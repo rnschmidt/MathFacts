@@ -349,6 +349,7 @@ h1 { font-size: 1.6rem; margin-bottom: 4px; text-align: center; }
     <h3>Needs Work</h3>
     <p style="font-size:0.8rem; color:var(--gray-dark); margin-bottom:8px;">Your slowest or most-missed facts</p>
     <div class="needs-work-list" id="needs-work-list"></div>
+    <button class="btn btn-orange btn-sm" onclick="startPracticeDrill()" style="margin-top:10px; max-width:200px;">Practice These</button>
   </div>
 
   <div class="chart-container" id="home-chart">
@@ -421,7 +422,7 @@ h1 { font-size: 1.6rem; margin-bottom: 4px; text-align: center; }
     <div class="missed-list" id="missed-list"></div>
   </div>
 
-  <button class="btn btn-blue" onclick="startDrill(currentLevel)">Try Again</button>
+  <button class="btn btn-blue" id="results-retry">Try Again</button>
   <button class="btn btn-outline" onclick="showScreen('home-screen')">Back to Home</button>
 </div>
 
@@ -468,6 +469,7 @@ let drillTotal = 0;
 let drillMissed = [];
 let drillResults = []; // { a, b, answer, userAnswer, correct, time }
 let drillActive = false;
+let practiceMode = false;
 let countdownInterval = null;
 let problemStartTime = 0;
 
@@ -604,6 +606,9 @@ function renderNeedsWork() {
   const needsWork = scored.filter(e => e.trouble > 1.3);
   if (!needsWork.length) { container.style.display = "none"; return; }
 
+  // Store for practice drill
+  lastNeedsWork = needsWork;
+
   container.style.display = "block";
   list.innerHTML = needsWork.map(e => {
     const parts = [`<span class="nw-fact">${e.a} × ${e.b}</span>`];
@@ -611,6 +616,43 @@ function renderNeedsWork() {
     if (e.accuracy < 0.9) parts.push(`<span class="nw-acc">${Math.round(e.accuracy * 100)}% right</span>`);
     return `<div class="needs-work-item">${parts.join(" ")}</div>`;
   }).join("");
+}
+
+let lastNeedsWork = [];
+
+function startPracticeDrill() {
+  if (!lastNeedsWork.length) return;
+
+  // Guard against double-taps
+  if (countdownInterval) { clearInterval(countdownInterval); countdownInterval = null; }
+  if (drillTimer) { clearInterval(drillTimer); drillTimer = null; }
+
+  // Build problem set from weak facts
+  const problems = lastNeedsWork.map(e => ({ a: e.a, b: e.b, answer: e.a * e.b }));
+  drillProblems = shuffle(problems);
+  drillIndex = 0;
+  drillCorrect = 0;
+  drillTotal = 0;
+  drillMissed = [];
+  drillResults = [];
+  drillActive = false;
+  practiceMode = true;
+
+  showScreen("drill-screen");
+  updateTimerDisplay(DRILL_SECONDS);
+  document.getElementById("score-live").textContent = "0 correct";
+  document.getElementById("feedback").textContent = "";
+  document.getElementById("feedback").className = "feedback";
+  document.getElementById("drill-progress").textContent = "Practice: Weak Facts";
+  clearAnswer();
+
+  showCountdown(() => {
+    drillActive = true;
+    drillTimeLeft = DRILL_SECONDS;
+    showProblem();
+    drillTimer = setInterval(tick, 1000);
+    clearAnswer();
+  });
 }
 
 function localDateStr(d) {
@@ -691,6 +733,7 @@ function startDrill(level) {
   drillMissed = [];
   drillResults = [];
   drillActive = false;
+  practiceMode = false;
 
   showScreen("drill-screen");
   updateTimerDisplay(DRILL_SECONDS);
@@ -873,25 +916,28 @@ function endDrill() {
   const ppm = drillCorrect; // 1-minute drill so correct count = PPM
   const accuracy = drillTotal > 0 ? Math.round((drillCorrect / drillTotal) * 100) : 0;
 
-  // Save result
-  const result = {
-    date: localDateStr(new Date()),
-    level: currentLevel,
-    score: drillCorrect,
-    total: drillTotal,
-    ppm,
-    accuracy,
-  };
-  data.history.push(result);
-
-  // Check level unlock
   let newUnlock = false;
-  const maxLevel = Math.max(...Object.keys(LEVELS).map(Number));
-  if (ppm >= GOAL_PPM && currentLevel < maxLevel) {
-    const nextLevel = currentLevel + 1;
-    if (!data.unlockedLevels.includes(nextLevel)) {
-      data.unlockedLevels.push(nextLevel);
-      newUnlock = true;
+
+  if (!practiceMode) {
+    // Save result to history (not for practice drills)
+    const result = {
+      date: localDateStr(new Date()),
+      level: currentLevel,
+      score: drillCorrect,
+      total: drillTotal,
+      ppm,
+      accuracy,
+    };
+    data.history.push(result);
+
+    // Check level unlock
+    const maxLevel = Math.max(...Object.keys(LEVELS).map(Number));
+    if (ppm >= GOAL_PPM && currentLevel < maxLevel) {
+      const nextLevel = currentLevel + 1;
+      if (!data.unlockedLevels.includes(nextLevel)) {
+        data.unlockedLevels.push(nextLevel);
+        newUnlock = true;
+      }
     }
   }
 
@@ -912,10 +958,17 @@ function showResults(ppm, correct, incorrect, accuracy, newUnlock) {
   document.getElementById("results-incorrect").textContent = incorrect;
   document.getElementById("results-accuracy").textContent = accuracy + "%";
 
+  // Wire retry button
+  const retryBtn = document.getElementById("results-retry");
+  retryBtn.textContent = practiceMode ? "Practice Again" : "Try Again";
+  retryBtn.onclick = practiceMode ? startPracticeDrill : () => startDrill(currentLevel);
+
   // Milestones
   const milestoneArea = document.getElementById("milestone-area");
   milestoneArea.innerHTML = "";
-  if (newUnlock) {
+  if (practiceMode) {
+    milestoneArea.innerHTML = `<div class="milestone-msg">Practice session — keep drilling those weak spots!</div>`;
+  } else if (newUnlock) {
     milestoneArea.innerHTML = `<div class="milestone-msg">Level ${currentLevel + 1} Unlocked! Keep it up!</div>`;
   } else if (ppm >= GOAL_PPM) {
     milestoneArea.innerHTML = `<div class="milestone-msg">Goal reached — ${GOAL_PPM} PPM! Amazing!</div>`;
