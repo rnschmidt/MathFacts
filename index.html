@@ -458,7 +458,7 @@ h1 { font-size: 1.6rem; margin-bottom: 4px; text-align: center; }
   <div id="retrieval-complete" style="display:none;">
     <div class="milestone-msg">100% correct! Great retrieval practice!</div>
     <p id="retrieval-summary" style="margin:12px 0; text-align:center; color:var(--gray-dark);"></p>
-    <button class="btn btn-green" onclick="startRetrieval()">Practice Again</button>
+    <button class="btn btn-green" onclick="restartRetrieval()">Practice Again</button>
     <button class="btn btn-outline" onclick="showScreen('home-screen')">Back to Home</button>
   </div>
 </div>
@@ -1224,6 +1224,20 @@ function completeRetrieval() {
     ? "Perfect on the first pass!"
     : `Completed in ${retrievalPass} passes.`;
   document.getElementById("retrieval-summary").textContent = summary;
+}
+
+function restartRetrieval() {
+  if (retrievalIsWeakFacts) {
+    // Re-fetch current weak facts from home data and restart
+    renderNeedsWork();
+    if (lastNeedsWork.length) {
+      startPracticeDrill();
+    } else {
+      showScreen("home-screen");
+    }
+  } else {
+    startRetrieval();
+  }
 }
 
 // ──────────────────────────────────────────
