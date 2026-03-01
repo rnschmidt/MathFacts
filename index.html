@@ -182,6 +182,31 @@ h1 { font-size: 1.6rem; margin-bottom: 4px; text-align: center; }
 }
 .missed-item .correct-answer { color: var(--green); font-weight: 700; }
 
+.slow-section { width: 100%; margin: 16px 0; }
+.slow-section h3 { font-size: 1rem; margin-bottom: 8px; color: var(--gray-dark); }
+.slow-list { display: flex; flex-wrap: wrap; gap: 8px; }
+.slow-item {
+  background: #fff3e0; border-radius: 8px; padding: 8px 14px;
+  font-size: 0.95rem; font-weight: 500;
+}
+.slow-item .slow-time { color: var(--orange); font-weight: 700; font-size: 0.8rem; }
+
+/* ─── Needs Work (Home) ─── */
+.needs-work {
+  width: 100%; margin: 12px 0; background: #fff;
+  border-radius: var(--radius); padding: 16px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+}
+.needs-work h3 { font-size: 0.95rem; margin-bottom: 10px; color: var(--gray-dark); }
+.needs-work-list { display: flex; flex-wrap: wrap; gap: 8px; }
+.needs-work-item {
+  background: var(--gray-light); border-radius: 8px; padding: 8px 14px;
+  font-size: 0.9rem; font-weight: 500; display: flex; gap: 6px; align-items: baseline;
+}
+.needs-work-item .nw-fact { font-weight: 700; }
+.needs-work-item .nw-time { color: var(--orange); font-size: 0.8rem; font-weight: 600; }
+.needs-work-item .nw-acc { color: var(--red); font-size: 0.8rem; font-weight: 600; }
+
 /* ─── Study Screen ─── */
 .study-grid {
   display: grid; grid-template-columns: repeat(auto-fill, minmax(90px, 1fr));
@@ -314,6 +339,11 @@ h1 { font-size: 1.6rem; margin-bottom: 4px; text-align: center; }
 
   <button class="btn btn-purple btn-sm" onclick="showScreen('study-screen')" style="margin-top:4px;">Study Mode</button>
 
+  <div class="needs-work" id="needs-work" style="display:none;">
+    <h3>Needs Work</h3>
+    <div class="needs-work-list" id="needs-work-list"></div>
+  </div>
+
   <div class="chart-container" id="home-chart">
     <h3>Recent Scores (PPM)</h3>
     <div id="chart-area"></div>
@@ -374,8 +404,13 @@ h1 { font-size: 1.6rem; margin-bottom: 4px; text-align: center; }
 
   <div id="milestone-area"></div>
 
+  <div class="slow-section" id="slow-section" style="display:none;">
+    <h3>Slowest This Drill:</h3>
+    <div class="slow-list" id="slow-list"></div>
+  </div>
+
   <div class="missed-section" id="missed-section">
-    <h3>Review These Facts:</h3>
+    <h3>Incorrect:</h3>
     <div class="missed-list" id="missed-list"></div>
   </div>
 
@@ -424,8 +459,10 @@ let drillIndex = 0;
 let drillCorrect = 0;
 let drillTotal = 0;
 let drillMissed = [];
+let drillResults = []; // { a, b, answer, userAnswer, correct, time }
 let drillActive = false;
 let countdownInterval = null;
+let problemStartTime = 0;
 
 // ──────────────────────────────────────────
 // PERSISTENCE
@@ -435,7 +472,7 @@ function loadData() {
     const raw = localStorage.getItem("mathfacts");
     if (raw) return JSON.parse(raw);
   } catch (e) { /* ignore */ }
-  return { currentLevel: 1, unlockedLevels: [1], history: [] };
+  return { currentLevel: 1, unlockedLevels: [1], history: [], factStats: {} };
 }
 
 function saveData() {
@@ -521,8 +558,52 @@ function renderHome() {
     container.appendChild(card);
   }
 
+  // Needs Work
+  renderNeedsWork();
+
   // Chart
   renderChart();
+}
+
+function renderNeedsWork() {
+  const container = document.getElementById("needs-work");
+  const list = document.getElementById("needs-work-list");
+  const stats = data.factStats || {};
+
+  // Only include facts with enough attempts
+  const entries = Object.entries(stats)
+    .filter(([, s]) => s.count >= 3)
+    .map(([key, s]) => {
+      const [a, b] = key.split("x").map(Number);
+      const accuracy = s.count > 0 ? s.correct / s.count : 1;
+      return { key, a, b, avg: s.avg, accuracy, count: s.count };
+    });
+
+  if (!entries.length) { container.style.display = "none"; return; }
+
+  // Score each fact: higher = more trouble (slow time + low accuracy)
+  const avgOfAvgs = entries.filter(e => e.avg !== null).reduce((s, e) => s + e.avg, 0) / entries.filter(e => e.avg !== null).length || 1;
+  const scored = entries
+    .filter(e => e.avg !== null)
+    .map(e => ({
+      ...e,
+      // Combine slowness and error rate into a single score
+      trouble: (e.avg / avgOfAvgs) + (1 - e.accuracy) * 3,
+    }))
+    .sort((a, b) => b.trouble - a.trouble)
+    .slice(0, 8);
+
+  // Only show facts that are actually above average in trouble
+  const needsWork = scored.filter(e => e.trouble > 1.3);
+  if (!needsWork.length) { container.style.display = "none"; return; }
+
+  container.style.display = "block";
+  list.innerHTML = needsWork.map(e => {
+    const parts = [`<span class="nw-fact">${e.a} × ${e.b}</span>`];
+    if (e.avg !== null) parts.push(`<span class="nw-time">${e.avg.toFixed(1)}s</span>`);
+    if (e.accuracy < 0.9) parts.push(`<span class="nw-acc">${Math.round(e.accuracy * 100)}%</span>`);
+    return `<div class="needs-work-item">${parts.join(" ")}</div>`;
+  }).join("");
 }
 
 function localDateStr(d) {
@@ -596,6 +677,7 @@ function startDrill(level) {
   drillCorrect = 0;
   drillTotal = 0;
   drillMissed = [];
+  drillResults = [];
   drillActive = false;
 
   showScreen("drill-screen");
@@ -667,12 +749,12 @@ function updateTimerDisplay(seconds) {
 
 function showProblem() {
   if (drillIndex >= drillProblems.length) {
-    // Reshuffle if we've gone through all problems
     drillProblems = shuffle(drillProblems);
     drillIndex = 0;
   }
   const p = drillProblems[drillIndex];
   document.getElementById("problem-display").textContent = `${p.a} × ${p.b}`;
+  problemStartTime = performance.now();
 }
 
 let answerBuffer = "";
@@ -709,12 +791,15 @@ function submitAnswer() {
   if (!drillActive) return;
   if (answerBuffer === "") return;
 
+  const elapsed = (performance.now() - problemStartTime) / 1000; // seconds
   const userAnswer = parseInt(answerBuffer, 10);
   if (isNaN(userAnswer)) { clearAnswer(); return; }
   const problem = drillProblems[drillIndex];
   const correct = userAnswer === problem.answer;
 
   drillTotal++;
+  drillResults.push({ a: problem.a, b: problem.b, answer: problem.answer, userAnswer, correct, time: elapsed });
+
   if (correct) {
     drillCorrect++;
     showFeedback(true);
@@ -723,11 +808,34 @@ function submitAnswer() {
     showFeedback(false, problem.answer);
   }
 
+  // Update per-fact stats
+  updateFactStats(problem.a, problem.b, correct, elapsed);
+
   document.getElementById("score-live").textContent = `${drillCorrect} correct`;
 
   drillIndex++;
   showProblem();
   clearAnswer();
+}
+
+function updateFactStats(a, b, correct, time) {
+  if (!data.factStats) data.factStats = {};
+  const key = `${a}x${b}`;
+  let stat = data.factStats[key];
+  if (!stat) {
+    stat = { avg: null, count: 0, correct: 0 };
+    data.factStats[key] = stat;
+  }
+  stat.count++;
+  if (correct) {
+    stat.correct++;
+    // Exponential moving average (weight recent more heavily)
+    if (stat.avg === null) {
+      stat.avg = time;
+    } else {
+      stat.avg = 0.7 * stat.avg + 0.3 * time;
+    }
+  }
 }
 
 function showFeedback(correct, correctAnswer) {
@@ -801,6 +909,25 @@ function showResults(ppm, correct, incorrect, accuracy, newUnlock) {
     milestoneArea.innerHTML = `<div class="milestone-msg">Goal reached — ${GOAL_PPM} PPM! Amazing!</div>`;
   } else if (ppm >= 30) {
     milestoneArea.innerHTML = `<div class="milestone-msg">Almost there! Just ${GOAL_PPM - ppm} more to reach the goal!</div>`;
+  }
+
+  // Slowest correct answers this drill
+  const slowSection = document.getElementById("slow-section");
+  const slowList = document.getElementById("slow-list");
+  const correctResults = drillResults.filter(r => r.correct);
+  if (correctResults.length > 0) {
+    const avgTime = correctResults.reduce((s, r) => s + r.time, 0) / correctResults.length;
+    const slow = correctResults.filter(r => r.time > avgTime * 1.5).sort((a, b) => b.time - a.time).slice(0, 5);
+    if (slow.length > 0) {
+      slowSection.style.display = "block";
+      slowList.innerHTML = slow.map(r =>
+        `<div class="slow-item"><span>${r.a} × ${r.b}</span> <span class="slow-time">${r.time.toFixed(1)}s</span></div>`
+      ).join("");
+    } else {
+      slowSection.style.display = "none";
+    }
+  } else {
+    slowSection.style.display = "none";
   }
 
   // Missed problems
