@@ -408,8 +408,8 @@ const LEVELS = {
   1: { name: "Level 1", label: "2s, 3s, 4s, 5s", multipliers: [2, 3, 4, 5], factors: [2, 3, 4, 5, 6, 7, 8, 9] },
   2: { name: "Level 2", label: "6s, 7s, 8s, 9s", multipliers: [6, 7, 8, 9], factors: [2, 3, 4, 5, 6, 7, 8, 9] },
   3: { name: "Level 3", label: "All Mixed (2–9)", multipliers: [2, 3, 4, 5, 6, 7, 8, 9], factors: [2, 3, 4, 5, 6, 7, 8, 9] },
-  4: { name: "Bonus 1", label: "12s", multipliers: [12], factors: [2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12] },
-  5: { name: "Bonus 2", label: "13s", multipliers: [13], factors: [2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13] },
+  4: { name: "Level 4", label: "All Mixed (2–12)", multipliers: [2,3,4,5,6,7,8,9,10,11,12], factors: [2,3,4,5,6,7,8,9,10,11,12] },
+  5: { name: "Level 5", label: "All Mixed (2–13)", multipliers: [2,3,4,5,6,7,8,9,10,11,12,13], factors: [2,3,4,5,6,7,8,9,10,11,12,13] },
 };
 const FACTORS = [2, 3, 4, 5, 6, 7, 8, 9];
 const GOAL_PPM = 40;
@@ -831,9 +831,8 @@ let studyMultiplier = null;
 function renderStudy() {
   const tabs = document.getElementById("study-tabs");
   const allMults = [2, 3, 4, 5, 6, 7, 8, 9];
-  // Add bonus multipliers if unlocked
-  if (data.unlockedLevels.includes(4)) allMults.push(12);
-  if (data.unlockedLevels.includes(5)) allMults.push(13);
+  if (data.unlockedLevels.includes(4)) allMults.push(10, 11, 12);
+  if (data.unlockedLevels.includes(5)) { if (!allMults.includes(10)) allMults.push(10, 11, 12); allMults.push(13); }
 
   // Default to first multiplier if none selected
   if (!studyMultiplier || !allMults.includes(studyMultiplier)) studyMultiplier = 2;
@@ -854,10 +853,7 @@ function renderStudyGrid() {
   const grid = document.getElementById("study-grid");
   grid.innerHTML = "";
 
-  // Match the factor range used in drills for bonus levels
-  const studyFactors = studyMultiplier === 12 ? [2,3,4,5,6,7,8,9,10,11,12]
-    : studyMultiplier === 13 ? [2,3,4,5,6,7,8,9,10,11,12,13]
-    : FACTORS;
+  const studyFactors = studyMultiplier >= 10 ? Array.from({length: studyMultiplier - 1}, (_, i) => i + 2) : FACTORS;
   for (const b of studyFactors) {
     const card = document.createElement("div");
     card.className = "study-card";
