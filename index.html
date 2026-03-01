@@ -247,7 +247,7 @@ h1 { font-size: 1.6rem; margin-bottom: 4px; text-align: center; }
   height: 120px; width: 100%; overflow-x: auto;
 }
 .chart-bar-wrap {
-  display: flex; flex-direction: column; align-items: center;
+  display: flex; align-items: flex-end; justify-content: center;
   flex: 1; min-width: 24px; max-width: 40px;
 }
 .chart-bar {
@@ -257,7 +257,13 @@ h1 { font-size: 1.6rem; margin-bottom: 4px; text-align: center; }
 }
 .chart-bar.below-goal { background: var(--blue); }
 .chart-bar.at-goal { background: var(--green); }
-.chart-date { font-size: 0.55rem; color: var(--gray-dark); margin-top: 3px; }
+.chart-dates {
+  display: flex; gap: 4px; width: 100%;
+}
+.chart-date {
+  font-size: 0.55rem; color: var(--gray-dark); margin-top: 3px;
+  text-align: center; flex: 1; min-width: 24px; max-width: 40px;
+}
 .goal-line-container {
   position: relative; height: 120px; width: 100%;
 }
@@ -645,13 +651,15 @@ function renderChart() {
   let barsHTML = recent.map(h => {
     const barH = Math.max(2, Math.round((h.ppm / maxPPM) * chartH));
     const atGoal = h.ppm >= GOAL_PPM;
-    const dateLabel = h.date.slice(5); // MM-DD
     return `
       <div class="chart-bar-wrap" title="Level ${h.level}: ${h.ppm} PPM">
         <div class="chart-bar ${atGoal ? "at-goal" : "below-goal"}" style="height:${barH}px"></div>
-        <div class="chart-date">${dateLabel}</div>
       </div>`;
   }).join("");
+
+  let datesHTML = recent.map(h =>
+    `<div class="chart-date">${h.date.slice(5)}</div>`
+  ).join("");
 
   area.innerHTML = `
     <div class="chart-wrapper" style="position:relative;">
@@ -660,6 +668,9 @@ function renderChart() {
       </div>
       <div class="chart">
         ${barsHTML}
+      </div>
+      <div class="chart-dates">
+        ${datesHTML}
       </div>
     </div>`;
 }
