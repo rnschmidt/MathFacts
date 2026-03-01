@@ -677,6 +677,7 @@ function startPracticeDrill() {
   document.getElementById("feedback").className = "feedback";
   document.getElementById("drill-progress").textContent = "Practice: Weak Facts";
   clearAnswer();
+  updateMicUI();
 
   showCountdown(() => {
     drillActive = true;
@@ -775,6 +776,7 @@ function startDrill(level) {
   document.getElementById("feedback").className = "feedback";
   document.getElementById("drill-progress").textContent = `${LEVELS[level].name}: ${LEVELS[level].label}`;
   clearAnswer();
+  updateMicUI();
 
   // Countdown
   showCountdown(() => {
@@ -1189,19 +1191,25 @@ function initMicButton() {
 function toggleMic() {
   if (!SpeechRecognition) return;
   micActive = !micActive;
+  updateMicUI();
+  if (micActive && drillActive) {
+    startListening();
+  } else {
+    stopListening();
+  }
+}
+
+function updateMicUI() {
   const btn = document.getElementById("mic-toggle");
   const indicator = document.getElementById("mic-listening");
-
   if (micActive) {
     btn.textContent = "Mic On";
     btn.classList.add("active");
     indicator.classList.add("active");
-    startListening();
   } else {
     btn.textContent = "Mic Off";
     btn.classList.remove("active");
     indicator.classList.remove("active");
-    stopListening();
   }
 }
 
@@ -1211,20 +1219,26 @@ function startListening() {
 
   recognition = new SpeechRecognition();
   recognition.continuous = true;
-  recognition.interimResults = false;
+  recognition.interimResults = true;
   recognition.lang = "en-US";
+  recognition.maxAlternatives = 1;
+
+  let lastProcessedIndex = -1;
 
   recognition.onresult = (event) => {
     if (!drillActive || !micActive) return;
-    // Get the latest result
-    const last = event.results[event.results.length - 1];
-    if (!last.isFinal) return;
-    const transcript = last[0].transcript;
-    const num = parseSpokenNumber(transcript);
-    if (!isNaN(num) && num >= 0) {
-      answerBuffer = String(num);
-      updateAnswerDisplay();
-      submitAnswer();
+    // Check all results from newest to oldest for a valid number
+    for (let i = event.results.length - 1; i >= 0; i--) {
+      if (i <= lastProcessedIndex) break;
+      const transcript = event.results[i][0].transcript;
+      const num = parseSpokenNumber(transcript);
+      if (!isNaN(num) && num >= 0) {
+        lastProcessedIndex = i;
+        answerBuffer = String(num);
+        updateAnswerDisplay();
+        submitAnswer();
+        break;
+      }
     }
   };
 
