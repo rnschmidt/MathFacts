@@ -701,7 +701,7 @@ function renderChart() {
   }).join("");
 
   let datesHTML = recent.map(h =>
-    `<div class="chart-date">${h.date.slice(5)}</div>`
+    `<div class="chart-date">${parseInt(h.date.slice(8), 10)}</div>`
   ).join("");
 
   area.innerHTML = `
