@@ -248,7 +248,7 @@ h1 { font-size: 1.6rem; margin-bottom: 4px; text-align: center; }
 }
 .chart-bar-wrap {
   display: flex; align-items: flex-end; justify-content: center;
-  flex: 1; min-width: 24px; max-width: 40px;
+  flex: 1; min-width: 0; max-width: 40px;
 }
 .chart-bar {
   width: 100%; border-radius: 4px 4px 0 0;
@@ -258,11 +258,12 @@ h1 { font-size: 1.6rem; margin-bottom: 4px; text-align: center; }
 .chart-bar.below-goal { background: var(--blue); }
 .chart-bar.at-goal { background: var(--green); }
 .chart-dates {
-  display: flex; gap: 4px; width: 100%;
+  display: flex; gap: 4px; width: 100%; overflow: hidden;
 }
 .chart-date {
   font-size: 0.55rem; color: var(--gray-dark); margin-top: 3px;
-  text-align: center; flex: 1; min-width: 24px; max-width: 40px;
+  text-align: center; flex: 1; min-width: 0; max-width: 40px;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
 }
 .goal-line-container {
   position: relative; height: 120px; width: 100%;
@@ -704,11 +705,11 @@ function renderChart() {
   ).join("");
 
   area.innerHTML = `
-    <div class="chart-wrapper" style="position:relative;">
-      <div style="position:absolute; bottom:${goalPx}px; left:0; right:0; border-top:2px dashed var(--green); z-index:1;">
-        <span style="position:absolute; right:0; top:-16px; font-size:0.65rem; color:var(--green); font-weight:600;">Goal: ${GOAL_PPM}</span>
-      </div>
-      <div class="chart">
+    <div class="chart-wrapper">
+      <div class="chart" style="position:relative;">
+        <div style="position:absolute; bottom:${goalPx}px; left:0; right:0; border-top:2px dashed var(--green); z-index:0; pointer-events:none;">
+          <span style="position:absolute; right:0; top:-16px; font-size:0.65rem; color:var(--green); font-weight:600;">Goal: ${GOAL_PPM}</span>
+        </div>
         ${barsHTML}
       </div>
       <div class="chart-dates">
