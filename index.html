@@ -1037,9 +1037,7 @@ let retrievalTransitioning = false;
 
 function renderRetrievalTabs() {
   const tabs = document.getElementById("retrieval-tabs");
-  const allMults = [2, 3, 4, 5, 6, 7, 8, 9];
-  if (data.unlockedLevels.includes(4)) allMults.push(10, 11, 12);
-  if (data.unlockedLevels.includes(5)) { if (!allMults.includes(10)) allMults.push(10, 11, 12); allMults.push(13); }
+  const allMults = [2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13];
 
   if (!retrievalMultiplier || !allMults.includes(retrievalMultiplier)) retrievalMultiplier = allMults[0];
 
