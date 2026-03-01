@@ -307,29 +307,6 @@ h1 { font-size: 1.6rem; margin-bottom: 4px; text-align: center; }
   100% { transform: scale(1); opacity: 1; }
 }
 
-/* ─── Mic Mode ─── */
-.mic-toggle {
-  padding: 8px 16px; border-radius: 20px; border: 2px solid var(--gray);
-  background: #fff; cursor: pointer; font-size: 0.85rem; font-weight: 500;
-  margin-bottom: 8px; transition: all 0.15s;
-}
-.mic-toggle.active { border-color: var(--red); background: #ffeaea; color: var(--red); }
-.mic-toggle:disabled { opacity: 0.3; cursor: not-allowed; }
-.mic-listening {
-  display: none; flex-direction: column; align-items: center; gap: 8px;
-  margin-top: 12px;
-}
-.mic-listening.active { display: flex; }
-.mic-pulse {
-  width: 48px; height: 48px; border-radius: 50%; background: var(--red);
-  animation: pulse 1.5s ease-in-out infinite;
-}
-@keyframes pulse {
-  0%, 100% { transform: scale(1); opacity: 0.7; }
-  50% { transform: scale(1.15); opacity: 1; }
-}
-.mic-status { font-size: 0.85rem; color: var(--gray-dark); }
-
 /* ─── Responsive ─── */
 @media (max-width: 400px) {
   .problem-display { font-size: 2.6rem; }
@@ -393,14 +370,7 @@ h1 { font-size: 1.6rem; margin-bottom: 4px; text-align: center; }
 
   <div class="answer-display" id="answer-display"></div>
 
-  <button class="mic-toggle" id="mic-toggle" onclick="toggleMic()">Mic Off</button>
-
   <div class="feedback" id="feedback"></div>
-
-  <div class="mic-listening" id="mic-listening">
-    <div class="mic-pulse"></div>
-    <div class="mic-status" id="mic-status">Listening...</div>
-  </div>
 
   <div class="numpad" id="numpad">
     <button class="numpad-btn" data-digit="1">1</button>
@@ -551,7 +521,6 @@ function showScreen(id) {
     if (drillActive) { drillActive = false; clearInterval(drillTimer); }
     if (countdownInterval) { clearInterval(countdownInterval); countdownInterval = null; }
     document.getElementById("countdown-overlay").classList.remove("active");
-    stopListening();
   }
 
   document.querySelectorAll(".screen").forEach(s => s.classList.remove("active"));
@@ -677,7 +646,7 @@ function startPracticeDrill() {
   document.getElementById("feedback").className = "feedback";
   document.getElementById("drill-progress").textContent = "Practice: Weak Facts";
   clearAnswer();
-  updateMicUI();
+
 
   showCountdown(() => {
     drillActive = true;
@@ -685,7 +654,6 @@ function startPracticeDrill() {
     showProblem();
     drillTimer = setInterval(tick, 1000);
     clearAnswer();
-    if (micActive) startListening();
   });
 }
 
@@ -776,7 +744,7 @@ function startDrill(level) {
   document.getElementById("feedback").className = "feedback";
   document.getElementById("drill-progress").textContent = `${LEVELS[level].name}: ${LEVELS[level].label}`;
   clearAnswer();
-  updateMicUI();
+
 
   // Countdown
   showCountdown(() => {
@@ -785,7 +753,6 @@ function startDrill(level) {
     showProblem();
     drillTimer = setInterval(tick, 1000);
     clearAnswer();
-    if (micActive) startListening();
   });
 }
 
@@ -948,7 +915,6 @@ function showFeedback(correct, correctAnswer) {
 function endDrill() {
   drillActive = false;
   clearInterval(drillTimer);
-  stopListening();
 
   const ppm = drillCorrect; // 1-minute drill so correct count = PPM
   const accuracy = drillTotal > 0 ? Math.round((drillCorrect / drillTotal) * 100) : 0;
@@ -1139,145 +1105,6 @@ document.addEventListener("keydown", (e) => {
     appendDigit(e.key);
   }
 });
-
-// ──────────────────────────────────────────
-// SPEECH RECOGNITION
-// ──────────────────────────────────────────
-const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-let recognition = null;
-let micActive = false;
-
-// Word-to-number map for speech results
-const WORD_NUMS = {
-  zero:0,one:1,two:2,three:3,four:4,five:5,six:6,seven:7,eight:8,nine:9,
-  ten:10,eleven:11,twelve:12,thirteen:13,fourteen:14,fifteen:15,sixteen:16,
-  seventeen:17,eighteen:18,nineteen:19,twenty:20,thirty:30,forty:40,fifty:50,
-  sixty:60,seventy:70,eighty:80,ninety:90,hundred:100,
-};
-
-function parseSpokenNumber(text) {
-  // Clean up
-  const clean = text.toLowerCase().trim();
-  // Try direct parse first (speech API often returns "24" etc.)
-  const direct = parseInt(clean, 10);
-  if (!isNaN(direct)) return direct;
-  // Parse word form: "twenty four" -> 24, "one hundred thirty two" -> 132
-  const words = clean.replace(/-/g, " ").split(/\s+/);
-  let total = 0, current = 0;
-  for (const w of words) {
-    const val = WORD_NUMS[w];
-    if (val === undefined) continue;
-    if (val === 100) {
-      current = (current || 1) * 100;
-    } else if (val >= 20) {
-      current += val;
-    } else {
-      current += val;
-    }
-  }
-  total += current;
-  return total > 0 ? total : NaN;
-}
-
-function initMicButton() {
-  const btn = document.getElementById("mic-toggle");
-  if (!SpeechRecognition) {
-    btn.disabled = true;
-    btn.textContent = "Mic N/A";
-    return;
-  }
-}
-
-function toggleMic() {
-  if (!SpeechRecognition) return;
-  micActive = !micActive;
-  updateMicUI();
-  if (micActive && drillActive) {
-    startListening();
-  } else {
-    stopListening();
-  }
-}
-
-function updateMicUI() {
-  const btn = document.getElementById("mic-toggle");
-  const indicator = document.getElementById("mic-listening");
-  if (micActive) {
-    btn.textContent = "Mic On";
-    btn.classList.add("active");
-    indicator.classList.add("active");
-  } else {
-    btn.textContent = "Mic Off";
-    btn.classList.remove("active");
-    indicator.classList.remove("active");
-  }
-}
-
-function startListening() {
-  if (!SpeechRecognition || !micActive) return;
-  if (recognition) { try { recognition.stop(); } catch(e) {} }
-
-  recognition = new SpeechRecognition();
-  recognition.continuous = true;
-  recognition.interimResults = true;
-  recognition.lang = "en-US";
-  recognition.maxAlternatives = 1;
-
-  let lastProcessedIndex = -1;
-
-  recognition.onresult = (event) => {
-    if (!drillActive || !micActive) return;
-    // Check all results from newest to oldest for a valid number
-    for (let i = event.results.length - 1; i >= 0; i--) {
-      if (i <= lastProcessedIndex) break;
-      const transcript = event.results[i][0].transcript;
-      const num = parseSpokenNumber(transcript);
-      if (!isNaN(num) && num >= 0) {
-        lastProcessedIndex = i;
-        answerBuffer = String(num);
-        updateAnswerDisplay();
-        submitAnswer();
-        break;
-      }
-    }
-  };
-
-  recognition.onerror = (event) => {
-    const status = document.getElementById("mic-status");
-    if (event.error === "no-speech") {
-      status.textContent = "Listening...";
-    } else {
-      status.textContent = "Retrying...";
-    }
-    // Auto-restart on recoverable errors
-    if (micActive && event.error !== "not-allowed") {
-      setTimeout(startListening, 300);
-    }
-  };
-
-  recognition.onend = () => {
-    // Restart if still in mic mode
-    if (micActive && drillActive) {
-      setTimeout(startListening, 100);
-    }
-  };
-
-  try {
-    recognition.start();
-    document.getElementById("mic-status").textContent = "Listening...";
-  } catch(e) {
-    document.getElementById("mic-status").textContent = "Mic error";
-  }
-}
-
-function stopListening() {
-  if (recognition) {
-    try { recognition.stop(); } catch(e) {}
-    recognition = null;
-  }
-}
-
-initMicButton();
 
 // ──────────────────────────────────────────
 // INIT
