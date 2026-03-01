@@ -1,0 +1,844 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>Math Facts Fluency</title>
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+:root {
+  --blue: #4a90d9;
+  --blue-dark: #357abd;
+  --green: #27ae60;
+  --green-dark: #1e8449;
+  --red: #e74c3c;
+  --orange: #f39c12;
+  --purple: #8e44ad;
+  --gray-light: #f5f6fa;
+  --gray: #bdc3c7;
+  --gray-dark: #636e72;
+  --text: #2d3436;
+  --radius: 12px;
+}
+
+body {
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  background: var(--gray-light);
+  color: var(--text);
+  min-height: 100dvh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.screen { display: none; width: 100%; max-width: 480px; padding: 20px; flex-direction: column; align-items: center; }
+.screen.active { display: flex; }
+
+/* ─── Header ─── */
+h1 { font-size: 1.6rem; margin-bottom: 4px; text-align: center; }
+.subtitle { color: var(--gray-dark); font-size: 0.95rem; margin-bottom: 20px; text-align: center; }
+
+/* ─── Buttons ─── */
+.btn {
+  display: inline-flex; align-items: center; justify-content: center;
+  padding: 14px 28px; border: none; border-radius: var(--radius);
+  font-size: 1.1rem; font-weight: 600; cursor: pointer;
+  transition: background 0.15s, transform 0.1s;
+  width: 100%; max-width: 320px; margin: 6px 0;
+  color: #fff;
+}
+.btn:active { transform: scale(0.97); }
+.btn-blue { background: var(--blue); }
+.btn-blue:hover { background: var(--blue-dark); }
+.btn-green { background: var(--green); }
+.btn-green:hover { background: var(--green-dark); }
+.btn-orange { background: var(--orange); }
+.btn-purple { background: var(--purple); }
+.btn-outline {
+  background: #fff; color: var(--text); border: 2px solid var(--gray);
+}
+.btn-outline:hover { border-color: var(--blue); color: var(--blue); }
+.btn:disabled { opacity: 0.4; cursor: not-allowed; }
+.btn-sm { padding: 10px 20px; font-size: 0.95rem; }
+
+/* ─── Home Screen ─── */
+.level-cards { width: 100%; margin: 10px 0; }
+.level-card {
+  background: #fff; border-radius: var(--radius); padding: 16px 20px;
+  margin-bottom: 12px; display: flex; align-items: center;
+  justify-content: space-between; box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+  cursor: pointer; transition: box-shadow 0.15s;
+}
+.level-card:hover { box-shadow: 0 4px 16px rgba(0,0,0,0.1); }
+.level-card.locked { opacity: 0.5; cursor: not-allowed; }
+.level-card.locked:hover { box-shadow: 0 2px 8px rgba(0,0,0,0.06); }
+.level-info h3 { font-size: 1.1rem; margin-bottom: 2px; }
+.level-info p { font-size: 0.85rem; color: var(--gray-dark); }
+.level-badge {
+  font-size: 0.8rem; font-weight: 600; padding: 4px 10px;
+  border-radius: 20px; white-space: nowrap;
+}
+.badge-unlocked { background: #d5f5e3; color: var(--green-dark); }
+.badge-locked { background: #eee; color: #999; }
+.badge-mastered { background: #fdebd0; color: #d68910; }
+
+.stats-bar {
+  display: flex; gap: 12px; width: 100%; margin: 12px 0;
+  flex-wrap: wrap; justify-content: center;
+}
+.stat-box {
+  background: #fff; border-radius: var(--radius); padding: 12px 16px;
+  text-align: center; flex: 1; min-width: 90px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+}
+.stat-box .stat-value { font-size: 1.5rem; font-weight: 700; }
+.stat-box .stat-label { font-size: 0.75rem; color: var(--gray-dark); margin-top: 2px; }
+
+/* ─── Drill Screen ─── */
+.drill-header {
+  display: flex; justify-content: space-between; align-items: center;
+  width: 100%; margin-bottom: 16px;
+}
+.timer {
+  font-size: 1.8rem; font-weight: 700; font-variant-numeric: tabular-nums;
+}
+.timer.warning { color: var(--red); }
+.score-live { font-size: 1.1rem; color: var(--gray-dark); }
+
+.problem-display {
+  font-size: 3.2rem; font-weight: 700; margin: 20px 0 16px;
+  text-align: center; letter-spacing: 2px;
+}
+.answer-input {
+  font-size: 2.4rem; text-align: center; width: 160px;
+  padding: 10px; border: 3px solid var(--gray);
+  border-radius: var(--radius); outline: none;
+  font-weight: 600;
+  -moz-appearance: textfield;
+}
+.answer-input::-webkit-outer-spin-button,
+.answer-input::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
+.answer-input:focus { border-color: var(--blue); }
+
+.feedback {
+  height: 36px; display: flex; align-items: center; justify-content: center;
+  font-size: 1.2rem; font-weight: 600; margin-top: 8px;
+}
+.feedback.correct { color: var(--green); }
+.feedback.incorrect { color: var(--red); }
+
+.drill-progress {
+  width: 100%; margin-top: 20px; color: var(--gray-dark);
+  font-size: 0.85rem; text-align: center;
+}
+
+/* ─── Results Screen ─── */
+.results-score {
+  font-size: 4rem; font-weight: 800; margin: 10px 0;
+}
+.results-score.goal-met { color: var(--green); }
+.results-label { font-size: 1.1rem; color: var(--gray-dark); }
+.results-details {
+  display: flex; gap: 20px; margin: 16px 0;
+}
+.results-details .stat { text-align: center; }
+.results-details .stat-val { font-size: 1.4rem; font-weight: 700; }
+.results-details .stat-lbl { font-size: 0.8rem; color: var(--gray-dark); }
+
+.milestone-msg {
+  background: linear-gradient(135deg, #ffeaa7, #fdcb6e);
+  border-radius: var(--radius); padding: 14px 20px;
+  text-align: center; font-weight: 600; font-size: 1.05rem;
+  margin: 10px 0; width: 100%;
+}
+
+.missed-section {
+  width: 100%; margin: 16px 0;
+}
+.missed-section h3 { font-size: 1rem; margin-bottom: 8px; color: var(--gray-dark); }
+.missed-list {
+  display: flex; flex-wrap: wrap; gap: 8px;
+}
+.missed-item {
+  background: #ffeaea; border-radius: 8px; padding: 8px 14px;
+  font-size: 0.95rem; font-weight: 500;
+}
+.missed-item .correct-answer { color: var(--green); font-weight: 700; }
+
+/* ─── Study Screen ─── */
+.study-grid {
+  display: grid; grid-template-columns: repeat(auto-fill, minmax(90px, 1fr));
+  gap: 8px; width: 100%; margin: 12px 0;
+}
+.study-card {
+  background: #fff; border-radius: 10px; padding: 14px 8px;
+  text-align: center; cursor: pointer; user-select: none;
+  box-shadow: 0 2px 6px rgba(0,0,0,0.06);
+  transition: background 0.2s, transform 0.15s;
+  min-height: 70px; display: flex; flex-direction: column;
+  align-items: center; justify-content: center;
+}
+.study-card:active { transform: scale(0.95); }
+.study-card .question { font-size: 1rem; font-weight: 600; }
+.study-card .answer { font-size: 1.3rem; font-weight: 800; color: var(--blue); margin-top: 4px; }
+.study-card.revealed { background: #eaf6ff; }
+
+.study-tabs {
+  display: flex; gap: 8px; margin-bottom: 12px; flex-wrap: wrap; justify-content: center;
+}
+.study-tab {
+  padding: 8px 16px; border-radius: 20px; border: 2px solid var(--gray);
+  background: #fff; cursor: pointer; font-size: 0.9rem; font-weight: 500;
+  transition: all 0.15s;
+}
+.study-tab.active { border-color: var(--blue); background: var(--blue); color: #fff; }
+
+/* ─── History / Chart ─── */
+.chart-container {
+  width: 100%; margin: 16px 0; background: #fff;
+  border-radius: var(--radius); padding: 16px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+}
+.chart-container h3 { font-size: 0.95rem; margin-bottom: 12px; color: var(--gray-dark); }
+.chart {
+  display: flex; align-items: flex-end; gap: 4px;
+  height: 120px; width: 100%; overflow-x: auto;
+}
+.chart-bar-wrap {
+  display: flex; flex-direction: column; align-items: center;
+  flex: 1; min-width: 24px; max-width: 40px;
+}
+.chart-bar {
+  width: 100%; border-radius: 4px 4px 0 0;
+  transition: height 0.3s;
+  min-height: 2px;
+}
+.chart-bar.below-goal { background: var(--blue); }
+.chart-bar.at-goal { background: var(--green); }
+.chart-date { font-size: 0.55rem; color: var(--gray-dark); margin-top: 3px; }
+.goal-line-container {
+  position: relative; height: 120px; width: 100%;
+}
+.goal-line {
+  position: absolute; left: 0; right: 0;
+  border-top: 2px dashed var(--green);
+}
+.goal-label {
+  position: absolute; right: 0; font-size: 0.65rem;
+  color: var(--green); font-weight: 600; transform: translateY(-100%);
+}
+.chart-wrapper {
+  position: relative;
+}
+.chart-empty {
+  text-align: center; color: var(--gray-dark); padding: 20px;
+  font-size: 0.9rem;
+}
+
+/* ─── Back link ─── */
+.back-link {
+  align-self: flex-start; margin-bottom: 12px;
+  color: var(--blue); font-weight: 600; cursor: pointer;
+  font-size: 0.95rem; background: none; border: none;
+}
+
+/* ─── Countdown Overlay ─── */
+.countdown-overlay {
+  position: fixed; inset: 0; background: rgba(0,0,0,0.7);
+  display: none; align-items: center; justify-content: center;
+  z-index: 100;
+}
+.countdown-overlay.active { display: flex; }
+.countdown-number {
+  font-size: 8rem; font-weight: 800; color: #fff;
+  animation: countPop 0.5s ease-out;
+}
+@keyframes countPop {
+  0% { transform: scale(1.6); opacity: 0; }
+  100% { transform: scale(1); opacity: 1; }
+}
+
+/* ─── Responsive ─── */
+@media (max-width: 400px) {
+  .problem-display { font-size: 2.6rem; }
+  .answer-input { font-size: 2rem; width: 130px; }
+  .timer { font-size: 1.5rem; }
+  h1 { font-size: 1.3rem; }
+  .btn { padding: 12px 20px; font-size: 1rem; }
+  .study-grid { grid-template-columns: repeat(auto-fill, minmax(75px, 1fr)); }
+}
+</style>
+</head>
+<body>
+
+<!-- ════════════ HOME SCREEN ════════════ -->
+<div id="home-screen" class="screen active">
+  <h1>Math Facts Fluency</h1>
+  <p class="subtitle">Master your multiplication facts!</p>
+
+  <div class="stats-bar">
+    <div class="stat-box">
+      <div class="stat-value" id="stat-best">—</div>
+      <div class="stat-label">Best PPM</div>
+    </div>
+    <div class="stat-box">
+      <div class="stat-value" id="stat-streak">0</div>
+      <div class="stat-label">Day Streak</div>
+    </div>
+    <div class="stat-box">
+      <div class="stat-value" id="stat-drills">0</div>
+      <div class="stat-label">Total Drills</div>
+    </div>
+  </div>
+
+  <div class="level-cards" id="level-cards"></div>
+
+  <button class="btn btn-purple btn-sm" onclick="showScreen('study-screen')" style="margin-top:4px;">Study Mode</button>
+
+  <div class="chart-container" id="home-chart">
+    <h3>Recent Scores (PPM)</h3>
+    <div id="chart-area"></div>
+  </div>
+</div>
+
+<!-- ════════════ DRILL SCREEN ════════════ -->
+<div id="drill-screen" class="screen">
+  <div class="drill-header">
+    <div class="timer" id="timer">1:00</div>
+    <div class="score-live" id="score-live">0 correct</div>
+  </div>
+
+  <div class="problem-display" id="problem-display">—</div>
+
+  <input type="number" inputmode="numeric" class="answer-input" id="answer-input"
+         autocomplete="off" autofocus>
+
+  <div class="feedback" id="feedback"></div>
+
+  <div class="drill-progress" id="drill-progress"></div>
+</div>
+
+<!-- ════════════ RESULTS SCREEN ════════════ -->
+<div id="results-screen" class="screen">
+  <button class="back-link" onclick="showScreen('home-screen')">&#8592; Home</button>
+
+  <div class="results-label">Problems Per Minute</div>
+  <div class="results-score" id="results-ppm">0</div>
+
+  <div class="results-details">
+    <div class="stat">
+      <div class="stat-val" id="results-correct">0</div>
+      <div class="stat-lbl">Correct</div>
+    </div>
+    <div class="stat">
+      <div class="stat-val" id="results-incorrect">0</div>
+      <div class="stat-lbl">Incorrect</div>
+    </div>
+    <div class="stat">
+      <div class="stat-val" id="results-accuracy">0%</div>
+      <div class="stat-lbl">Accuracy</div>
+    </div>
+  </div>
+
+  <div id="milestone-area"></div>
+
+  <div class="missed-section" id="missed-section">
+    <h3>Review These Facts:</h3>
+    <div class="missed-list" id="missed-list"></div>
+  </div>
+
+  <button class="btn btn-blue" onclick="startDrill(currentLevel)">Try Again</button>
+  <button class="btn btn-outline" onclick="showScreen('home-screen')">Back to Home</button>
+</div>
+
+<!-- ════════════ STUDY SCREEN ════════════ -->
+<div id="study-screen" class="screen">
+  <button class="back-link" onclick="showScreen('home-screen')">&#8592; Home</button>
+  <h1>Study Mode</h1>
+  <p class="subtitle">Tap a card to reveal the answer</p>
+
+  <div class="study-tabs" id="study-tabs"></div>
+  <div class="study-grid" id="study-grid"></div>
+
+  <button class="btn btn-outline btn-sm" onclick="resetStudyCards()" style="margin-top:8px;">Hide All Answers</button>
+</div>
+
+<!-- ════════════ COUNTDOWN OVERLAY ════════════ -->
+<div class="countdown-overlay" id="countdown-overlay">
+  <div class="countdown-number" id="countdown-number">3</div>
+</div>
+
+<script>
+// ──────────────────────────────────────────
+// DATA & STATE
+// ──────────────────────────────────────────
+const LEVELS = {
+  1: { name: "Level 1", label: "2s, 3s, 4s, 5s", multipliers: [2, 3, 4, 5] },
+  2: { name: "Level 2", label: "6s, 7s, 8s, 9s", multipliers: [6, 7, 8, 9] },
+  3: { name: "Level 3", label: "All Mixed (2–9)", multipliers: [2, 3, 4, 5, 6, 7, 8, 9] },
+};
+const FACTORS = [2, 3, 4, 5, 6, 7, 8, 9];
+const GOAL_PPM = 40;
+const DRILL_SECONDS = 60;
+
+let data = loadData();
+let currentLevel = data.currentLevel;
+let drillTimer = null;
+let drillTimeLeft = 0;
+let drillProblems = [];
+let drillIndex = 0;
+let drillCorrect = 0;
+let drillTotal = 0;
+let drillMissed = [];
+let drillActive = false;
+let countdownInterval = null;
+
+// ──────────────────────────────────────────
+// PERSISTENCE
+// ──────────────────────────────────────────
+function loadData() {
+  try {
+    const raw = localStorage.getItem("mathfacts");
+    if (raw) return JSON.parse(raw);
+  } catch (e) { /* ignore */ }
+  return { currentLevel: 1, unlockedLevels: [1], history: [] };
+}
+
+function saveData() {
+  localStorage.setItem("mathfacts", JSON.stringify(data));
+}
+
+// ──────────────────────────────────────────
+// PROBLEM GENERATION
+// ──────────────────────────────────────────
+function generateProblems(level) {
+  const mults = LEVELS[level].multipliers;
+  const problems = [];
+  for (const a of mults) {
+    for (const b of FACTORS) {
+      problems.push({ a, b, answer: a * b });
+    }
+  }
+  return shuffle(problems);
+}
+
+function shuffle(arr) {
+  const a = [...arr];
+  for (let i = a.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [a[i], a[j]] = [a[j], a[i]];
+  }
+  return a;
+}
+
+// ──────────────────────────────────────────
+// SCREEN NAVIGATION
+// ──────────────────────────────────────────
+function showScreen(id) {
+  // Clean up any active drill/countdown when navigating away
+  if (id !== "drill-screen") {
+    if (drillActive) { drillActive = false; clearInterval(drillTimer); }
+    if (countdownInterval) { clearInterval(countdownInterval); countdownInterval = null; }
+    document.getElementById("countdown-overlay").classList.remove("active");
+  }
+
+  document.querySelectorAll(".screen").forEach(s => s.classList.remove("active"));
+  document.getElementById(id).classList.add("active");
+
+  if (id === "home-screen") renderHome();
+  if (id === "study-screen") renderStudy();
+}
+
+// ──────────────────────────────────────────
+// HOME SCREEN
+// ──────────────────────────────────────────
+function renderHome() {
+  // Stats
+  const history = data.history;
+  const bestPPM = history.length ? Math.max(...history.map(h => h.ppm)) : null;
+  document.getElementById("stat-best").textContent = bestPPM !== null ? bestPPM : "—";
+  document.getElementById("stat-drills").textContent = history.length;
+  document.getElementById("stat-streak").textContent = calcStreak();
+
+  // Level cards
+  const container = document.getElementById("level-cards");
+  container.innerHTML = "";
+  for (const lvl of [1, 2, 3]) {
+    const unlocked = data.unlockedLevels.includes(lvl);
+    const bestForLevel = history.filter(h => h.level === lvl);
+    const bestLvlPPM = bestForLevel.length ? Math.max(...bestForLevel.map(h => h.ppm)) : 0;
+    const mastered = bestLvlPPM >= GOAL_PPM;
+
+    const card = document.createElement("div");
+    card.className = "level-card" + (unlocked ? "" : " locked");
+    card.innerHTML = `
+      <div class="level-info">
+        <h3>${LEVELS[lvl].name}</h3>
+        <p>${LEVELS[lvl].label}${bestForLevel.length ? " · Best: " + bestLvlPPM + " PPM" : ""}</p>
+      </div>
+      <span class="level-badge ${mastered ? "badge-mastered" : unlocked ? "badge-unlocked" : "badge-locked"}">
+        ${mastered ? "★ Mastered" : unlocked ? "Play" : "Locked"}
+      </span>
+    `;
+    if (unlocked) {
+      card.addEventListener("click", () => startDrill(lvl));
+    }
+    container.appendChild(card);
+  }
+
+  // Chart
+  renderChart();
+}
+
+function localDateStr(d) {
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+}
+
+function calcStreak() {
+  if (!data.history.length) return 0;
+  const dates = [...new Set(data.history.map(h => h.date))].sort().reverse();
+  let streak = 0;
+  const today = new Date();
+
+  for (let i = 0; i < dates.length; i++) {
+    const expected = new Date(today);
+    expected.setDate(expected.getDate() - i);
+    if (dates[i] === localDateStr(expected)) {
+      streak++;
+    } else {
+      break;
+    }
+  }
+  return streak;
+}
+
+function renderChart() {
+  const area = document.getElementById("chart-area");
+  const recent = data.history.slice(-20);
+
+  if (!recent.length) {
+    area.innerHTML = '<div class="chart-empty">Complete a drill to see your progress!</div>';
+    return;
+  }
+
+  const maxPPM = Math.max(GOAL_PPM + 5, ...recent.map(h => h.ppm));
+  const goalPct = (GOAL_PPM / maxPPM) * 100;
+
+  let barsHTML = recent.map(h => {
+    const pct = (h.ppm / maxPPM) * 100;
+    const atGoal = h.ppm >= GOAL_PPM;
+    const dateLabel = h.date.slice(5); // MM-DD
+    return `
+      <div class="chart-bar-wrap" title="Level ${h.level}: ${h.ppm} PPM">
+        <div class="chart-bar ${atGoal ? "at-goal" : "below-goal"}" style="height:${pct}%"></div>
+        <div class="chart-date">${dateLabel}</div>
+      </div>`;
+  }).join("");
+
+  area.innerHTML = `
+    <div class="chart-wrapper" style="position:relative;">
+      <div class="goal-line" style="bottom:${goalPct}%; position:absolute; left:0; right:0; border-top:2px dashed var(--green); z-index:1;">
+        <span class="goal-label" style="position:absolute; right:0; top:-16px; font-size:0.65rem; color:var(--green); font-weight:600;">Goal: ${GOAL_PPM}</span>
+      </div>
+      <div class="chart" style="position:relative; z-index:2;">
+        ${barsHTML}
+      </div>
+    </div>`;
+}
+
+// ──────────────────────────────────────────
+// DRILL
+// ──────────────────────────────────────────
+function startDrill(level) {
+  // Guard against double-taps during countdown
+  if (countdownInterval) { clearInterval(countdownInterval); countdownInterval = null; }
+  if (drillTimer) { clearInterval(drillTimer); drillTimer = null; }
+
+  currentLevel = level;
+  drillProblems = generateProblems(level);
+  drillIndex = 0;
+  drillCorrect = 0;
+  drillTotal = 0;
+  drillMissed = [];
+  drillActive = false;
+
+  showScreen("drill-screen");
+  updateTimerDisplay(DRILL_SECONDS);
+  document.getElementById("score-live").textContent = "0 correct";
+  document.getElementById("feedback").textContent = "";
+  document.getElementById("feedback").className = "feedback";
+  document.getElementById("drill-progress").textContent = `${LEVELS[level].name}: ${LEVELS[level].label}`;
+
+  // Countdown
+  showCountdown(() => {
+    drillActive = true;
+    drillTimeLeft = DRILL_SECONDS;
+    showProblem();
+    drillTimer = setInterval(tick, 1000);
+    focusInput();
+  });
+}
+
+function showCountdown(onDone) {
+  const overlay = document.getElementById("countdown-overlay");
+  const numEl = document.getElementById("countdown-number");
+  overlay.classList.add("active");
+  let count = 3;
+  numEl.textContent = count;
+  // Force re-trigger animation
+  numEl.style.animation = "none";
+  void numEl.offsetHeight;
+  numEl.style.animation = "";
+
+  countdownInterval = setInterval(() => {
+    count--;
+    if (count === 0) {
+      numEl.textContent = "Go!";
+      numEl.style.animation = "none";
+      void numEl.offsetHeight;
+      numEl.style.animation = "";
+    } else if (count < 0) {
+      clearInterval(countdownInterval);
+      countdownInterval = null;
+      overlay.classList.remove("active");
+      onDone();
+      return;
+    } else {
+      numEl.textContent = count;
+      numEl.style.animation = "none";
+      void numEl.offsetHeight;
+      numEl.style.animation = "";
+    }
+  }, 700);
+}
+
+function tick() {
+  drillTimeLeft--;
+  updateTimerDisplay(drillTimeLeft);
+  if (drillTimeLeft <= 0) {
+    endDrill();
+  }
+}
+
+function updateTimerDisplay(seconds) {
+  const m = Math.floor(seconds / 60);
+  const s = seconds % 60;
+  const el = document.getElementById("timer");
+  el.textContent = `${m}:${s.toString().padStart(2, "0")}`;
+  el.classList.toggle("warning", seconds <= 10);
+}
+
+function showProblem() {
+  if (drillIndex >= drillProblems.length) {
+    // Reshuffle if we've gone through all problems
+    drillProblems = shuffle(drillProblems);
+    drillIndex = 0;
+  }
+  const p = drillProblems[drillIndex];
+  document.getElementById("problem-display").textContent = `${p.a} × ${p.b}`;
+}
+
+function focusInput() {
+  const input = document.getElementById("answer-input");
+  input.value = "";
+  input.focus();
+}
+
+function submitAnswer() {
+  if (!drillActive) return;
+  const input = document.getElementById("answer-input");
+  const val = input.value.trim();
+  if (val === "") return;
+
+  const userAnswer = parseInt(val, 10);
+  if (isNaN(userAnswer)) { focusInput(); return; }
+  const problem = drillProblems[drillIndex];
+  const correct = userAnswer === problem.answer;
+
+  drillTotal++;
+  if (correct) {
+    drillCorrect++;
+    showFeedback(true);
+  } else {
+    drillMissed.push({ ...problem, userAnswer });
+    showFeedback(false, problem.answer);
+  }
+
+  document.getElementById("score-live").textContent = `${drillCorrect} correct`;
+
+  drillIndex++;
+  showProblem();
+  focusInput();
+}
+
+function showFeedback(correct, correctAnswer) {
+  const el = document.getElementById("feedback");
+  if (correct) {
+    el.textContent = "Correct!";
+    el.className = "feedback correct";
+  } else {
+    el.textContent = `Nope — ${correctAnswer}`;
+    el.className = "feedback incorrect";
+  }
+  // Clear after a brief moment (but don't delay next question)
+  clearTimeout(el._timer);
+  el._timer = setTimeout(() => {
+    if (drillActive) { el.textContent = ""; el.className = "feedback"; }
+  }, 800);
+}
+
+function endDrill() {
+  drillActive = false;
+  clearInterval(drillTimer);
+
+  const ppm = drillCorrect; // 1-minute drill so correct count = PPM
+  const accuracy = drillTotal > 0 ? Math.round((drillCorrect / drillTotal) * 100) : 0;
+
+  // Save result
+  const result = {
+    date: localDateStr(new Date()),
+    level: currentLevel,
+    score: drillCorrect,
+    total: drillTotal,
+    ppm,
+    accuracy,
+  };
+  data.history.push(result);
+
+  // Check level unlock
+  let newUnlock = false;
+  if (ppm >= GOAL_PPM && currentLevel < 3) {
+    const nextLevel = currentLevel + 1;
+    if (!data.unlockedLevels.includes(nextLevel)) {
+      data.unlockedLevels.push(nextLevel);
+      newUnlock = true;
+    }
+  }
+
+  saveData();
+
+  // Show results
+  showResults(ppm, drillCorrect, drillTotal - drillCorrect, accuracy, newUnlock);
+}
+
+function showResults(ppm, correct, incorrect, accuracy, newUnlock) {
+  showScreen("results-screen");
+
+  const ppmEl = document.getElementById("results-ppm");
+  ppmEl.textContent = ppm;
+  ppmEl.classList.toggle("goal-met", ppm >= GOAL_PPM);
+
+  document.getElementById("results-correct").textContent = correct;
+  document.getElementById("results-incorrect").textContent = incorrect;
+  document.getElementById("results-accuracy").textContent = accuracy + "%";
+
+  // Milestones
+  const milestoneArea = document.getElementById("milestone-area");
+  milestoneArea.innerHTML = "";
+  if (newUnlock) {
+    milestoneArea.innerHTML = `<div class="milestone-msg">Level ${currentLevel + 1} Unlocked! Keep it up!</div>`;
+  } else if (ppm >= GOAL_PPM) {
+    milestoneArea.innerHTML = `<div class="milestone-msg">Goal reached — ${GOAL_PPM} PPM! Amazing!</div>`;
+  } else if (ppm >= 30) {
+    milestoneArea.innerHTML = `<div class="milestone-msg">Almost there! Just ${GOAL_PPM - ppm} more to reach the goal!</div>`;
+  }
+
+  // Missed problems
+  const missedSection = document.getElementById("missed-section");
+  const missedList = document.getElementById("missed-list");
+  // Deduplicate missed problems
+  const uniqueMissed = [];
+  const seen = new Set();
+  for (const m of drillMissed) {
+    const key = `${m.a}x${m.b}`;
+    if (!seen.has(key)) { seen.add(key); uniqueMissed.push(m); }
+  }
+  if (uniqueMissed.length > 0) {
+    missedSection.style.display = "block";
+    missedList.innerHTML = uniqueMissed.map(m =>
+      `<div class="missed-item">${m.a} × ${m.b} = <span class="correct-answer">${m.answer}</span></div>`
+    ).join("");
+  } else {
+    missedSection.style.display = "none";
+  }
+}
+
+// ──────────────────────────────────────────
+// STUDY MODE
+// ──────────────────────────────────────────
+let studyMultiplier = null;
+
+function renderStudy() {
+  const tabs = document.getElementById("study-tabs");
+  const allMults = [2, 3, 4, 5, 6, 7, 8, 9];
+
+  // Default to first multiplier if none selected
+  if (!studyMultiplier) studyMultiplier = 2;
+
+  tabs.innerHTML = allMults.map(m =>
+    `<button class="study-tab ${m === studyMultiplier ? "active" : ""}" onclick="selectStudyTab(${m})">${m}s</button>`
+  ).join("");
+
+  renderStudyGrid();
+}
+
+function selectStudyTab(m) {
+  studyMultiplier = m;
+  renderStudy();
+}
+
+function renderStudyGrid() {
+  const grid = document.getElementById("study-grid");
+  grid.innerHTML = "";
+
+  for (const b of FACTORS) {
+    const card = document.createElement("div");
+    card.className = "study-card";
+    card.innerHTML = `
+      <div class="question">${studyMultiplier} × ${b}</div>
+      <div class="answer" style="visibility:hidden;">${studyMultiplier * b}</div>
+    `;
+    card.addEventListener("click", () => {
+      const ans = card.querySelector(".answer");
+      const showing = ans.style.visibility === "visible";
+      ans.style.visibility = showing ? "hidden" : "visible";
+      card.classList.toggle("revealed", !showing);
+    });
+    grid.appendChild(card);
+  }
+}
+
+function resetStudyCards() {
+  document.querySelectorAll(".study-card").forEach(card => {
+    card.querySelector(".answer").style.visibility = "hidden";
+    card.classList.remove("revealed");
+  });
+}
+
+// ──────────────────────────────────────────
+// INPUT HANDLING
+// ──────────────────────────────────────────
+document.getElementById("answer-input").addEventListener("keydown", (e) => {
+  if (e.key === "Enter") {
+    e.preventDefault();
+    submitAnswer();
+  }
+});
+
+// Prevent losing focus during drill
+document.addEventListener("click", (e) => {
+  if (drillActive && !e.target.closest(".answer-input")) {
+    // Small delay to let any other click handlers fire
+    setTimeout(focusInput, 10);
+  }
+});
+
+// ──────────────────────────────────────────
+// INIT
+// ──────────────────────────────────────────
+renderHome();
+</script>
+</body>
+</html>
