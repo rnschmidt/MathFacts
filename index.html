@@ -405,9 +405,11 @@ h1 { font-size: 1.6rem; margin-bottom: 4px; text-align: center; }
 // DATA & STATE
 // ──────────────────────────────────────────
 const LEVELS = {
-  1: { name: "Level 1", label: "2s, 3s, 4s, 5s", multipliers: [2, 3, 4, 5] },
-  2: { name: "Level 2", label: "6s, 7s, 8s, 9s", multipliers: [6, 7, 8, 9] },
-  3: { name: "Level 3", label: "All Mixed (2–9)", multipliers: [2, 3, 4, 5, 6, 7, 8, 9] },
+  1: { name: "Level 1", label: "2s, 3s, 4s, 5s", multipliers: [2, 3, 4, 5], factors: [2, 3, 4, 5, 6, 7, 8, 9] },
+  2: { name: "Level 2", label: "6s, 7s, 8s, 9s", multipliers: [6, 7, 8, 9], factors: [2, 3, 4, 5, 6, 7, 8, 9] },
+  3: { name: "Level 3", label: "All Mixed (2–9)", multipliers: [2, 3, 4, 5, 6, 7, 8, 9], factors: [2, 3, 4, 5, 6, 7, 8, 9] },
+  4: { name: "Bonus 1", label: "12s", multipliers: [12], factors: [2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12] },
+  5: { name: "Bonus 2", label: "13s", multipliers: [13], factors: [2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13] },
 };
 const FACTORS = [2, 3, 4, 5, 6, 7, 8, 9];
 const GOAL_PPM = 40;
@@ -444,10 +446,10 @@ function saveData() {
 // PROBLEM GENERATION
 // ──────────────────────────────────────────
 function generateProblems(level) {
-  const mults = LEVELS[level].multipliers;
+  const lvl = LEVELS[level];
   const problems = [];
-  for (const a of mults) {
-    for (const b of FACTORS) {
+  for (const a of lvl.multipliers) {
+    for (const b of lvl.factors) {
       problems.push({ a, b, answer: a * b });
     }
   }
@@ -495,7 +497,8 @@ function renderHome() {
   // Level cards
   const container = document.getElementById("level-cards");
   container.innerHTML = "";
-  for (const lvl of [1, 2, 3]) {
+  const levelIds = Object.keys(LEVELS).map(Number);
+  for (const lvl of levelIds) {
     const unlocked = data.unlockedLevels.includes(lvl);
     const bestForLevel = history.filter(h => h.level === lvl);
     const bestLvlPPM = bestForLevel.length ? Math.max(...bestForLevel.map(h => h.ppm)) : 0;
@@ -763,7 +766,8 @@ function endDrill() {
 
   // Check level unlock
   let newUnlock = false;
-  if (ppm >= GOAL_PPM && currentLevel < 3) {
+  const maxLevel = Math.max(...Object.keys(LEVELS).map(Number));
+  if (ppm >= GOAL_PPM && currentLevel < maxLevel) {
     const nextLevel = currentLevel + 1;
     if (!data.unlockedLevels.includes(nextLevel)) {
       data.unlockedLevels.push(nextLevel);
@@ -827,9 +831,12 @@ let studyMultiplier = null;
 function renderStudy() {
   const tabs = document.getElementById("study-tabs");
   const allMults = [2, 3, 4, 5, 6, 7, 8, 9];
+  // Add bonus multipliers if unlocked
+  if (data.unlockedLevels.includes(4)) allMults.push(12);
+  if (data.unlockedLevels.includes(5)) allMults.push(13);
 
   // Default to first multiplier if none selected
-  if (!studyMultiplier) studyMultiplier = 2;
+  if (!studyMultiplier || !allMults.includes(studyMultiplier)) studyMultiplier = 2;
 
   tabs.innerHTML = allMults.map(m =>
     `<button class="study-tab ${m === studyMultiplier ? "active" : ""}" onclick="selectStudyTab(${m})">${m}s</button>`
@@ -847,7 +854,11 @@ function renderStudyGrid() {
   const grid = document.getElementById("study-grid");
   grid.innerHTML = "";
 
-  for (const b of FACTORS) {
+  // Match the factor range used in drills for bonus levels
+  const studyFactors = studyMultiplier === 12 ? [2,3,4,5,6,7,8,9,10,11,12]
+    : studyMultiplier === 13 ? [2,3,4,5,6,7,8,9,10,11,12,13]
+    : FACTORS;
+  for (const b of studyFactors) {
     const card = document.createElement("div");
     card.className = "study-card";
     card.innerHTML = `
