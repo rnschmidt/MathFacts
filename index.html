@@ -207,23 +207,14 @@ h1 { font-size: 1.6rem; margin-bottom: 4px; text-align: center; }
 .needs-work-item .nw-time { color: var(--orange); font-size: 0.8rem; font-weight: 600; }
 .needs-work-item .nw-acc { color: var(--red); font-size: 0.8rem; font-weight: 600; }
 
-/* ─── Study Screen ─── */
-.study-grid {
-  display: grid; grid-template-columns: repeat(auto-fill, minmax(90px, 1fr));
-  gap: 8px; width: 100%; margin: 12px 0;
+/* ─── Retrieval Screen ─── */
+.retrieval-progress {
+  font-size: 0.9rem;
+  color: var(--gray-dark);
+  text-align: center;
+  margin-bottom: 12px;
+  font-weight: 500;
 }
-.study-card {
-  background: #fff; border-radius: 10px; padding: 14px 8px;
-  text-align: center; cursor: pointer; user-select: none;
-  box-shadow: 0 2px 6px rgba(0,0,0,0.06);
-  transition: background 0.2s, transform 0.15s;
-  min-height: 70px; display: flex; flex-direction: column;
-  align-items: center; justify-content: center;
-}
-.study-card:active { transform: scale(0.95); }
-.study-card .question { font-size: 1rem; font-weight: 600; }
-.study-card .answer { font-size: 1.3rem; font-weight: 800; color: var(--blue); margin-top: 4px; }
-.study-card.revealed { background: #eaf6ff; }
 
 .study-tabs {
   display: flex; gap: 8px; margin-bottom: 12px; flex-wrap: wrap; justify-content: center;
@@ -316,7 +307,6 @@ h1 { font-size: 1.6rem; margin-bottom: 4px; text-align: center; }
   .btn { padding: 12px 20px; font-size: 1rem; }
   .numpad { max-width: 240px; gap: 6px; }
   .numpad-btn { padding: 14px; font-size: 1.4rem; }
-  .study-grid { grid-template-columns: repeat(auto-fill, minmax(75px, 1fr)); }
 }
 </style>
 </head>
@@ -344,7 +334,7 @@ h1 { font-size: 1.6rem; margin-bottom: 4px; text-align: center; }
 
   <div class="level-cards" id="level-cards"></div>
 
-  <button class="btn btn-purple btn-sm" onclick="showScreen('study-screen')" style="margin-top:4px;">Study Mode</button>
+  <button class="btn btn-purple btn-sm" onclick="showScreen('retrieval-screen')" style="margin-top:4px;">Retrieval Practice</button>
 
   <div class="needs-work" id="needs-work" style="display:none;">
     <h3>Needs Work</h3>
@@ -427,16 +417,50 @@ h1 { font-size: 1.6rem; margin-bottom: 4px; text-align: center; }
   <button class="btn btn-outline" onclick="showScreen('home-screen')">Back to Home</button>
 </div>
 
-<!-- ════════════ STUDY SCREEN ════════════ -->
-<div id="study-screen" class="screen">
+<!-- ════════════ RETRIEVAL SCREEN ════════════ -->
+<div id="retrieval-screen" class="screen">
   <button class="back-link" onclick="showScreen('home-screen')">&#8592; Home</button>
-  <h1>Study Mode</h1>
-  <p class="subtitle">Tap a card to reveal the answer</p>
+  <h1>Retrieval Practice</h1>
+  <p class="subtitle">Type each answer — no peeking!</p>
 
-  <div class="study-tabs" id="study-tabs"></div>
-  <div class="study-grid" id="study-grid"></div>
+  <!-- Table picker (reuse study-tabs styling) -->
+  <div class="study-tabs" id="retrieval-tabs"></div>
 
-  <button class="btn btn-outline btn-sm" onclick="resetStudyCards()" style="margin-top:8px;">Hide All Answers</button>
+  <!-- Pre-start state: show Start button -->
+  <div id="retrieval-start-area">
+    <button class="btn btn-green" onclick="startRetrieval()">Start</button>
+  </div>
+
+  <!-- Active retrieval area (hidden until started) -->
+  <div id="retrieval-active" style="display:none;">
+    <div class="retrieval-progress" id="retrieval-progress">Pass 1: In Order — Fact 1 of 8</div>
+    <div class="problem-display" id="retrieval-problem">—</div>
+    <div class="answer-display" id="retrieval-answer"></div>
+    <div class="feedback" id="retrieval-feedback"></div>
+
+    <!-- Duplicate numpad -->
+    <div class="numpad" id="retrieval-numpad">
+      <button class="numpad-btn" data-digit="1">1</button>
+      <button class="numpad-btn" data-digit="2">2</button>
+      <button class="numpad-btn" data-digit="3">3</button>
+      <button class="numpad-btn" data-digit="4">4</button>
+      <button class="numpad-btn" data-digit="5">5</button>
+      <button class="numpad-btn" data-digit="6">6</button>
+      <button class="numpad-btn" data-digit="7">7</button>
+      <button class="numpad-btn" data-digit="8">8</button>
+      <button class="numpad-btn" data-digit="9">9</button>
+      <button class="numpad-btn btn-backspace" data-action="backspace">&#9003;</button>
+      <button class="numpad-btn" data-digit="0">0</button>
+    </div>
+  </div>
+
+  <!-- Completion state -->
+  <div id="retrieval-complete" style="display:none;">
+    <div class="milestone-msg">100% correct! Great retrieval practice!</div>
+    <p id="retrieval-summary" style="margin:12px 0; text-align:center; color:var(--gray-dark);"></p>
+    <button class="btn btn-green" onclick="startRetrieval()">Practice Again</button>
+    <button class="btn btn-outline" onclick="showScreen('home-screen')">Back to Home</button>
+  </div>
 </div>
 
 <!-- ════════════ COUNTDOWN OVERLAY ════════════ -->
@@ -526,8 +550,12 @@ function showScreen(id) {
   document.querySelectorAll(".screen").forEach(s => s.classList.remove("active"));
   document.getElementById(id).classList.add("active");
 
+  if (id !== "retrieval-screen" && retrievalActive) {
+    retrievalActive = false;
+  }
+
   if (id === "home-screen") renderHome();
-  if (id === "study-screen") renderStudy();
+  if (id === "retrieval-screen") renderRetrievalTabs();
 }
 
 // ──────────────────────────────────────────
@@ -876,7 +904,7 @@ function submitAnswer() {
   clearAnswer();
 }
 
-function updateFactStats(a, b, correct, time) {
+function updateFactStats(a, b, correct, time, skipTime) {
   if (!data.factStats) data.factStats = {};
   const key = `${a}x${b}`;
   let stat = data.factStats[key];
@@ -888,10 +916,12 @@ function updateFactStats(a, b, correct, time) {
   if (correct) {
     stat.correct++;
     // Exponential moving average (weight recent more heavily)
-    if (stat.avg === null) {
-      stat.avg = time;
-    } else {
-      stat.avg = 0.7 * stat.avg + 0.3 * time;
+    if (!skipTime) {
+      if (stat.avg === null) {
+        stat.avg = time;
+      } else {
+        stat.avg = 0.7 * stat.avg + 0.3 * time;
+      }
     }
   }
 }
@@ -1019,58 +1049,195 @@ function showResults(ppm, correct, incorrect, accuracy, newUnlock) {
 }
 
 // ──────────────────────────────────────────
-// STUDY MODE
+// RETRIEVAL PRACTICE
 // ──────────────────────────────────────────
-let studyMultiplier = null;
+let retrievalActive = false;
+let retrievalMultiplier = null;
+let retrievalFacts = [];
+let retrievalIndex = 0;
+let retrievalPass = 1;
+let retrievalMistakesThisPass = 0;
+let retrievalWaitingForCorrection = false;
+let retrievalCorrectAnswer = null;
+let retrievalBuffer = "";
+let retrievalTransitioning = false;
 
-function renderStudy() {
-  const tabs = document.getElementById("study-tabs");
+function renderRetrievalTabs() {
+  const tabs = document.getElementById("retrieval-tabs");
   const allMults = [2, 3, 4, 5, 6, 7, 8, 9];
   if (data.unlockedLevels.includes(4)) allMults.push(10, 11, 12);
   if (data.unlockedLevels.includes(5)) { if (!allMults.includes(10)) allMults.push(10, 11, 12); allMults.push(13); }
 
-  // Default to first multiplier if none selected
-  if (!studyMultiplier || !allMults.includes(studyMultiplier)) studyMultiplier = 2;
+  if (!retrievalMultiplier || !allMults.includes(retrievalMultiplier)) retrievalMultiplier = allMults[0];
 
   tabs.innerHTML = allMults.map(m =>
-    `<button class="study-tab ${m === studyMultiplier ? "active" : ""}" onclick="selectStudyTab(${m})">${m}s</button>`
+    `<button class="study-tab ${m === retrievalMultiplier ? "active" : ""}" onclick="selectRetrievalTab(${m})">${m}s</button>`
   ).join("");
 
-  renderStudyGrid();
+  // Reset to start state when navigating to screen
+  document.getElementById("retrieval-start-area").style.display = "";
+  document.getElementById("retrieval-active").style.display = "none";
+  document.getElementById("retrieval-complete").style.display = "none";
+  retrievalActive = false;
 }
 
-function selectStudyTab(m) {
-  studyMultiplier = m;
-  renderStudy();
+function selectRetrievalTab(m) {
+  if (retrievalActive) return;
+  retrievalMultiplier = m;
+  renderRetrievalTabs();
 }
 
-function renderStudyGrid() {
-  const grid = document.getElementById("study-grid");
-  grid.innerHTML = "";
+function startRetrieval() {
+  if (retrievalActive) return;
+  const factors = retrievalMultiplier >= 10
+    ? Array.from({length: retrievalMultiplier - 1}, (_, i) => i + 2)
+    : FACTORS;
 
-  const studyFactors = studyMultiplier >= 10 ? Array.from({length: studyMultiplier - 1}, (_, i) => i + 2) : FACTORS;
-  for (const b of studyFactors) {
-    const card = document.createElement("div");
-    card.className = "study-card";
-    card.innerHTML = `
-      <div class="question">${studyMultiplier} × ${b}</div>
-      <div class="answer" style="visibility:hidden;">${studyMultiplier * b}</div>
-    `;
-    card.addEventListener("click", () => {
-      const ans = card.querySelector(".answer");
-      const showing = ans.style.visibility === "visible";
-      ans.style.visibility = showing ? "hidden" : "visible";
-      card.classList.toggle("revealed", !showing);
-    });
-    grid.appendChild(card);
+  retrievalFacts = factors.map(b => ({ a: retrievalMultiplier, b, answer: retrievalMultiplier * b }));
+  retrievalIndex = 0;
+  retrievalPass = 1;
+  retrievalMistakesThisPass = 0;
+  retrievalWaitingForCorrection = false;
+  retrievalCorrectAnswer = null;
+  retrievalBuffer = "";
+  retrievalTransitioning = false;
+  retrievalActive = true;
+
+  document.getElementById("retrieval-start-area").style.display = "none";
+  document.getElementById("retrieval-active").style.display = "";
+  document.getElementById("retrieval-complete").style.display = "none";
+
+  showRetrievalProblem();
+}
+
+function showRetrievalProblem() {
+  const fact = retrievalFacts[retrievalIndex];
+  document.getElementById("retrieval-problem").textContent = `${fact.a} × ${fact.b}`;
+  retrievalBuffer = "";
+  updateRetrievalAnswerDisplay();
+
+  const passLabel = retrievalPass === 1 ? "Pass 1: In Order" : `Pass ${retrievalPass}: Shuffled`;
+  document.getElementById("retrieval-progress").textContent =
+    `${passLabel} — Fact ${retrievalIndex + 1} of ${retrievalFacts.length}`;
+
+  const fb = document.getElementById("retrieval-feedback");
+  fb.textContent = "";
+  fb.className = "feedback";
+}
+
+function updateRetrievalAnswerDisplay() {
+  const display = document.getElementById("retrieval-answer");
+  display.textContent = retrievalBuffer;
+  display.classList.toggle("has-value", retrievalBuffer.length > 0);
+}
+
+function retrievalAppendDigit(d) {
+  if (!retrievalActive || retrievalTransitioning) return;
+  const expectedDigits = String(retrievalFacts[retrievalIndex].answer).length;
+
+  // When waiting for correction, use the correct answer's digit count
+  const targetDigits = retrievalWaitingForCorrection
+    ? String(retrievalCorrectAnswer).length
+    : expectedDigits;
+
+  if (retrievalBuffer.length >= targetDigits) return;
+  retrievalBuffer += d;
+  updateRetrievalAnswerDisplay();
+  if (retrievalBuffer.length === targetDigits) {
+    submitRetrievalAnswer();
   }
 }
 
-function resetStudyCards() {
-  document.querySelectorAll(".study-card").forEach(card => {
-    card.querySelector(".answer").style.visibility = "hidden";
-    card.classList.remove("revealed");
-  });
+function retrievalBackspace() {
+  if (!retrievalActive || retrievalTransitioning) return;
+  retrievalBuffer = retrievalBuffer.slice(0, -1);
+  updateRetrievalAnswerDisplay();
+}
+
+function submitRetrievalAnswer() {
+  if (!retrievalActive || retrievalTransitioning) return;
+  if (retrievalBuffer === "") return;
+
+  const userAnswer = parseInt(retrievalBuffer, 10);
+  if (isNaN(userAnswer)) { retrievalBuffer = ""; updateRetrievalAnswerDisplay(); return; }
+
+  const fb = document.getElementById("retrieval-feedback");
+  const fact = retrievalFacts[retrievalIndex];
+
+  if (retrievalWaitingForCorrection) {
+    // Must type the correct answer
+    if (userAnswer === retrievalCorrectAnswer) {
+      retrievalWaitingForCorrection = false;
+      retrievalCorrectAnswer = null;
+      fb.textContent = "Got it!";
+      fb.className = "feedback correct";
+      retrievalTransitioning = true;
+      setTimeout(() => {
+        retrievalTransitioning = false;
+        advanceRetrieval();
+      }, 600);
+    } else {
+      // Wrong again — shake and clear
+      fb.textContent = `Type ${fact.answer} to continue`;
+      fb.className = "feedback incorrect";
+      retrievalBuffer = "";
+      updateRetrievalAnswerDisplay();
+    }
+    return;
+  }
+
+  // Normal answer check
+  const correct = userAnswer === fact.answer;
+  updateFactStats(fact.a, fact.b, correct, 0, true);
+
+  if (correct) {
+    fb.textContent = "Correct!";
+    fb.className = "feedback correct";
+    retrievalTransitioning = true;
+    setTimeout(() => {
+      retrievalTransitioning = false;
+      advanceRetrieval();
+    }, 400);
+  } else {
+    retrievalMistakesThisPass++;
+    fb.textContent = `Nope — ${fact.answer}. Type it to continue.`;
+    fb.className = "feedback incorrect";
+    retrievalWaitingForCorrection = true;
+    retrievalCorrectAnswer = fact.answer;
+    retrievalBuffer = "";
+    updateRetrievalAnswerDisplay();
+  }
+}
+
+function advanceRetrieval() {
+  retrievalIndex++;
+  if (retrievalIndex >= retrievalFacts.length) {
+    // End of this pass
+    if (retrievalMistakesThisPass === 0) {
+      // Done! 100% correct this pass
+      completeRetrieval();
+      return;
+    }
+    // Start next pass (shuffled)
+    retrievalPass++;
+    retrievalFacts = shuffle(retrievalFacts);
+    retrievalIndex = 0;
+    retrievalMistakesThisPass = 0;
+  }
+  showRetrievalProblem();
+}
+
+function completeRetrieval() {
+  retrievalActive = false;
+  saveData();
+
+  document.getElementById("retrieval-active").style.display = "none";
+  document.getElementById("retrieval-complete").style.display = "";
+
+  const summary = retrievalPass === 1
+    ? "Perfect on the first pass!"
+    : `Completed in ${retrievalPass} passes.`;
+  document.getElementById("retrieval-summary").textContent = summary;
 }
 
 // ──────────────────────────────────────────
@@ -1091,18 +1258,28 @@ document.getElementById("numpad").addEventListener("click", (e) => {
   }
 });
 
-// Desktop keyboard support via hidden input
+// Retrieval numpad
+document.getElementById("retrieval-numpad").addEventListener("click", (e) => {
+  const btn = e.target.closest(".numpad-btn");
+  if (!btn) return;
+  e.preventDefault();
+  if (btn.dataset.digit !== undefined) {
+    retrievalAppendDigit(btn.dataset.digit);
+  } else if (btn.dataset.action === "backspace") {
+    retrievalBackspace();
+  }
+});
+
+// Desktop keyboard support
 document.addEventListener("keydown", (e) => {
-  if (!drillActive) return;
-  if (e.key === "Enter") {
-    e.preventDefault();
-    submitAnswer();
-  } else if (e.key === "Backspace") {
-    e.preventDefault();
-    backspaceDigit();
-  } else if (e.key >= "0" && e.key <= "9") {
-    e.preventDefault();
-    appendDigit(e.key);
+  if (drillActive) {
+    if (e.key === "Enter") { e.preventDefault(); submitAnswer(); }
+    else if (e.key === "Backspace") { e.preventDefault(); backspaceDigit(); }
+    else if (e.key >= "0" && e.key <= "9") { e.preventDefault(); appendDigit(e.key); }
+  } else if (retrievalActive) {
+    if (e.key === "Enter") { e.preventDefault(); submitRetrievalAnswer(); }
+    else if (e.key === "Backspace") { e.preventDefault(); retrievalBackspace(); }
+    else if (e.key >= "0" && e.key <= "9") { e.preventDefault(); retrievalAppendDigit(e.key); }
   }
 });
 
