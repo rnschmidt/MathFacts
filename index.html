@@ -553,26 +553,27 @@ function renderChart() {
     return;
   }
 
+  const chartH = 120;
   const maxPPM = Math.max(GOAL_PPM + 5, ...recent.map(h => h.ppm));
-  const goalPct = (GOAL_PPM / maxPPM) * 100;
+  const goalPx = Math.round((GOAL_PPM / maxPPM) * chartH);
 
   let barsHTML = recent.map(h => {
-    const pct = (h.ppm / maxPPM) * 100;
+    const barH = Math.max(2, Math.round((h.ppm / maxPPM) * chartH));
     const atGoal = h.ppm >= GOAL_PPM;
     const dateLabel = h.date.slice(5); // MM-DD
     return `
       <div class="chart-bar-wrap" title="Level ${h.level}: ${h.ppm} PPM">
-        <div class="chart-bar ${atGoal ? "at-goal" : "below-goal"}" style="height:${pct}%"></div>
+        <div class="chart-bar ${atGoal ? "at-goal" : "below-goal"}" style="height:${barH}px"></div>
         <div class="chart-date">${dateLabel}</div>
       </div>`;
   }).join("");
 
   area.innerHTML = `
     <div class="chart-wrapper" style="position:relative;">
-      <div class="goal-line" style="bottom:${goalPct}%; position:absolute; left:0; right:0; border-top:2px dashed var(--green); z-index:1;">
-        <span class="goal-label" style="position:absolute; right:0; top:-16px; font-size:0.65rem; color:var(--green); font-weight:600;">Goal: ${GOAL_PPM}</span>
+      <div style="position:absolute; bottom:${goalPx}px; left:0; right:0; border-top:2px dashed var(--green); z-index:1;">
+        <span style="position:absolute; right:0; top:-16px; font-size:0.65rem; color:var(--green); font-weight:600;">Goal: ${GOAL_PPM}</span>
       </div>
-      <div class="chart" style="position:relative; z-index:2;">
+      <div class="chart">
         ${barsHTML}
       </div>
     </div>`;
