@@ -555,7 +555,7 @@ function showScreen(id) {
   }
 
   if (id === "home-screen") renderHome();
-  if (id === "retrieval-screen") renderRetrievalTabs();
+  if (id === "retrieval-screen" && !retrievalActive) renderRetrievalTabs();
 }
 
 // ──────────────────────────────────────────
@@ -651,38 +651,10 @@ let lastNeedsWork = [];
 
 function startPracticeDrill() {
   if (!lastNeedsWork.length) return;
-
-  // Guard against double-taps
-  if (countdownInterval) { clearInterval(countdownInterval); countdownInterval = null; }
-  if (drillTimer) { clearInterval(drillTimer); drillTimer = null; }
-
-  // Build problem set from weak facts
-  const problems = lastNeedsWork.map(e => ({ a: e.a, b: e.b, answer: e.a * e.b }));
-  drillProblems = shuffle(problems);
-  drillIndex = 0;
-  drillCorrect = 0;
-  drillTotal = 0;
-  drillMissed = [];
-  drillResults = [];
-  drillActive = false;
-  practiceMode = true;
-
-  showScreen("drill-screen");
-  updateTimerDisplay(DRILL_SECONDS);
-  document.getElementById("score-live").textContent = "0 correct";
-  document.getElementById("feedback").textContent = "";
-  document.getElementById("feedback").className = "feedback";
-  document.getElementById("drill-progress").textContent = "Practice: Weak Facts";
-  clearAnswer();
-
-
-  showCountdown(() => {
-    drillActive = true;
-    drillTimeLeft = DRILL_SECONDS;
-    showProblem();
-    drillTimer = setInterval(tick, 1000);
-    clearAnswer();
-  });
+  startRetrievalWithFacts(
+    lastNeedsWork.map(e => ({ a: e.a, b: e.b, answer: e.a * e.b })),
+    true
+  );
 }
 
 function localDateStr(d) {
@@ -1057,6 +1029,7 @@ let retrievalFacts = [];
 let retrievalIndex = 0;
 let retrievalPass = 1;
 let retrievalMistakesThisPass = 0;
+let retrievalIsWeakFacts = false;
 let retrievalWaitingForCorrection = false;
 let retrievalCorrectAnswer = null;
 let retrievalBuffer = "";
@@ -1093,7 +1066,14 @@ function startRetrieval() {
     ? Array.from({length: retrievalMultiplier - 1}, (_, i) => i + 2)
     : FACTORS;
 
-  retrievalFacts = factors.map(b => ({ a: retrievalMultiplier, b, answer: retrievalMultiplier * b }));
+  const facts = factors.map(b => ({ a: retrievalMultiplier, b, answer: retrievalMultiplier * b }));
+  startRetrievalWithFacts(facts, false);
+}
+
+function startRetrievalWithFacts(facts, isWeakFacts) {
+  if (retrievalActive) return;
+  retrievalFacts = facts;
+  retrievalIsWeakFacts = isWeakFacts;
   retrievalIndex = 0;
   retrievalPass = 1;
   retrievalMistakesThisPass = 0;
@@ -1102,6 +1082,12 @@ function startRetrieval() {
   retrievalBuffer = "";
   retrievalTransitioning = false;
   retrievalActive = true;
+
+  if (isWeakFacts) {
+    showScreen("retrieval-screen");
+    document.getElementById("retrieval-tabs").innerHTML =
+      '<span class="study-tab active" style="cursor:default;">Weak Facts</span>';
+  }
 
   document.getElementById("retrieval-start-area").style.display = "none";
   document.getElementById("retrieval-active").style.display = "";
@@ -1116,7 +1102,9 @@ function showRetrievalProblem() {
   retrievalBuffer = "";
   updateRetrievalAnswerDisplay();
 
-  const passLabel = retrievalPass === 1 ? "Pass 1: In Order" : `Pass ${retrievalPass}: Shuffled`;
+  const passLabel = retrievalIsWeakFacts
+    ? `Pass ${retrievalPass}`
+    : (retrievalPass === 1 ? "Pass 1: In Order" : `Pass ${retrievalPass}: Shuffled`);
   document.getElementById("retrieval-progress").textContent =
     `${passLabel} — Fact ${retrievalIndex + 1} of ${retrievalFacts.length}`;
 
