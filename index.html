@@ -341,6 +341,7 @@ h1 { font-size: 1.6rem; margin-bottom: 4px; text-align: center; }
 
   <div class="needs-work" id="needs-work" style="display:none;">
     <h3>Needs Work</h3>
+    <p style="font-size:0.8rem; color:var(--gray-dark); margin-bottom:8px;">Your slowest or most-missed facts</p>
     <div class="needs-work-list" id="needs-work-list"></div>
   </div>
 
@@ -600,8 +601,8 @@ function renderNeedsWork() {
   container.style.display = "block";
   list.innerHTML = needsWork.map(e => {
     const parts = [`<span class="nw-fact">${e.a} × ${e.b}</span>`];
-    if (e.avg !== null) parts.push(`<span class="nw-time">${e.avg.toFixed(1)}s</span>`);
-    if (e.accuracy < 0.9) parts.push(`<span class="nw-acc">${Math.round(e.accuracy * 100)}%</span>`);
+    if (e.avg !== null) parts.push(`<span class="nw-time">avg ${e.avg.toFixed(1)}s</span>`);
+    if (e.accuracy < 0.9) parts.push(`<span class="nw-acc">${Math.round(e.accuracy * 100)}% right</span>`);
     return `<div class="needs-work-item">${parts.join(" ")}</div>`;
   }).join("");
 }
