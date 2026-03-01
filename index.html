@@ -111,26 +111,41 @@ h1 { font-size: 1.6rem; margin-bottom: 4px; text-align: center; }
   font-size: 3.2rem; font-weight: 700; margin: 20px 0 16px;
   text-align: center; letter-spacing: 2px;
 }
-.answer-input {
-  font-size: 2.4rem; text-align: center; width: 160px;
+.answer-display {
+  font-size: 2.4rem; text-align: center; width: 180px;
   padding: 10px; border: 3px solid var(--gray);
-  border-radius: var(--radius); outline: none;
-  font-weight: 600;
-  -moz-appearance: textfield;
+  border-radius: var(--radius); font-weight: 600;
+  background: #fff; height: 60px;
+  display: flex; align-items: center; justify-content: center;
+  overflow: hidden;
 }
-.answer-input::-webkit-outer-spin-button,
-.answer-input::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
-.answer-input:focus { border-color: var(--blue); }
+.answer-display.has-value { border-color: var(--blue); }
 
 .feedback {
-  height: 36px; display: flex; align-items: center; justify-content: center;
+  min-height: 36px; height: 36px; display: flex; align-items: center; justify-content: center;
   font-size: 1.2rem; font-weight: 600; margin-top: 8px;
+  visibility: hidden;
 }
+.feedback.correct, .feedback.incorrect { visibility: visible; }
 .feedback.correct { color: var(--green); }
 .feedback.incorrect { color: var(--red); }
 
+.numpad {
+  display: grid; grid-template-columns: repeat(3, 1fr);
+  gap: 8px; width: 100%; max-width: 280px; margin-top: 12px;
+}
+.numpad-btn {
+  padding: 16px; font-size: 1.6rem; font-weight: 700;
+  border: none; border-radius: var(--radius); cursor: pointer;
+  background: #fff; color: var(--text);
+  box-shadow: 0 2px 6px rgba(0,0,0,0.08);
+  transition: background 0.1s, transform 0.1s;
+  user-select: none; -webkit-user-select: none;
+}
+.numpad-btn:active { transform: scale(0.93); background: #e8e8e8; }
+.numpad-btn.btn-backspace { font-size: 1.3rem; background: #f0f0f0; }
 .drill-progress {
-  width: 100%; margin-top: 20px; color: var(--gray-dark);
+  width: 100%; margin-top: 12px; color: var(--gray-dark);
   font-size: 0.85rem; text-align: center;
 }
 
@@ -263,10 +278,12 @@ h1 { font-size: 1.6rem; margin-bottom: 4px; text-align: center; }
 /* ─── Responsive ─── */
 @media (max-width: 400px) {
   .problem-display { font-size: 2.6rem; }
-  .answer-input { font-size: 2rem; width: 130px; }
+  .answer-display { font-size: 2rem; width: 140px; }
   .timer { font-size: 1.5rem; }
   h1 { font-size: 1.3rem; }
   .btn { padding: 12px 20px; font-size: 1rem; }
+  .numpad { max-width: 240px; gap: 6px; }
+  .numpad-btn { padding: 14px; font-size: 1.4rem; }
   .study-grid { grid-template-columns: repeat(auto-fill, minmax(75px, 1fr)); }
 }
 </style>
@@ -312,10 +329,23 @@ h1 { font-size: 1.6rem; margin-bottom: 4px; text-align: center; }
 
   <div class="problem-display" id="problem-display">—</div>
 
-  <input type="number" inputmode="numeric" class="answer-input" id="answer-input"
-         autocomplete="off" autofocus>
+  <div class="answer-display" id="answer-display"></div>
 
   <div class="feedback" id="feedback"></div>
+
+  <div class="numpad" id="numpad">
+    <button class="numpad-btn" data-digit="1">1</button>
+    <button class="numpad-btn" data-digit="2">2</button>
+    <button class="numpad-btn" data-digit="3">3</button>
+    <button class="numpad-btn" data-digit="4">4</button>
+    <button class="numpad-btn" data-digit="5">5</button>
+    <button class="numpad-btn" data-digit="6">6</button>
+    <button class="numpad-btn" data-digit="7">7</button>
+    <button class="numpad-btn" data-digit="8">8</button>
+    <button class="numpad-btn" data-digit="9">9</button>
+    <button class="numpad-btn btn-backspace" data-action="backspace">&#9003;</button>
+    <button class="numpad-btn" data-digit="0">0</button>
+  </div>
 
   <div class="drill-progress" id="drill-progress"></div>
 </div>
@@ -570,6 +600,7 @@ function startDrill(level) {
   document.getElementById("feedback").textContent = "";
   document.getElementById("feedback").className = "feedback";
   document.getElementById("drill-progress").textContent = `${LEVELS[level].name}: ${LEVELS[level].label}`;
+  clearAnswer();
 
   // Countdown
   showCountdown(() => {
@@ -577,7 +608,7 @@ function startDrill(level) {
     drillTimeLeft = DRILL_SECONDS;
     showProblem();
     drillTimer = setInterval(tick, 1000);
-    focusInput();
+    clearAnswer();
   });
 }
 
@@ -640,20 +671,42 @@ function showProblem() {
   document.getElementById("problem-display").textContent = `${p.a} × ${p.b}`;
 }
 
-function focusInput() {
-  const input = document.getElementById("answer-input");
-  input.value = "";
-  input.focus();
+let answerBuffer = "";
+
+function updateAnswerDisplay() {
+  const display = document.getElementById("answer-display");
+  display.textContent = answerBuffer;
+  display.classList.toggle("has-value", answerBuffer.length > 0);
+}
+
+function clearAnswer() {
+  answerBuffer = "";
+  updateAnswerDisplay();
+}
+
+function appendDigit(d) {
+  if (!drillActive) return;
+  const expectedDigits = String(drillProblems[drillIndex].answer).length;
+  if (answerBuffer.length >= expectedDigits) return;
+  answerBuffer += d;
+  updateAnswerDisplay();
+  if (answerBuffer.length === expectedDigits) {
+    submitAnswer();
+  }
+}
+
+function backspaceDigit() {
+  if (!drillActive) return;
+  answerBuffer = answerBuffer.slice(0, -1);
+  updateAnswerDisplay();
 }
 
 function submitAnswer() {
   if (!drillActive) return;
-  const input = document.getElementById("answer-input");
-  const val = input.value.trim();
-  if (val === "") return;
+  if (answerBuffer === "") return;
 
-  const userAnswer = parseInt(val, 10);
-  if (isNaN(userAnswer)) { focusInput(); return; }
+  const userAnswer = parseInt(answerBuffer, 10);
+  if (isNaN(userAnswer)) { clearAnswer(); return; }
   const problem = drillProblems[drillIndex];
   const correct = userAnswer === problem.answer;
 
@@ -670,7 +723,7 @@ function submitAnswer() {
 
   drillIndex++;
   showProblem();
-  focusInput();
+  clearAnswer();
 }
 
 function showFeedback(correct, correctAnswer) {
@@ -685,7 +738,7 @@ function showFeedback(correct, correctAnswer) {
   // Clear after a brief moment (but don't delay next question)
   clearTimeout(el._timer);
   el._timer = setTimeout(() => {
-    if (drillActive) { el.textContent = ""; el.className = "feedback"; }
+    if (drillActive) { el.className = "feedback"; }
   }, 800);
 }
 
@@ -820,18 +873,33 @@ function resetStudyCards() {
 // ──────────────────────────────────────────
 // INPUT HANDLING
 // ──────────────────────────────────────────
-document.getElementById("answer-input").addEventListener("keydown", (e) => {
-  if (e.key === "Enter") {
-    e.preventDefault();
+
+// On-screen numpad
+document.getElementById("numpad").addEventListener("click", (e) => {
+  const btn = e.target.closest(".numpad-btn");
+  if (!btn) return;
+  e.preventDefault();
+  if (btn.dataset.digit !== undefined) {
+    appendDigit(btn.dataset.digit);
+  } else if (btn.dataset.action === "backspace") {
+    backspaceDigit();
+  } else if (btn.dataset.action === "submit") {
     submitAnswer();
   }
 });
 
-// Prevent losing focus during drill
-document.addEventListener("click", (e) => {
-  if (drillActive && !e.target.closest(".answer-input")) {
-    // Small delay to let any other click handlers fire
-    setTimeout(focusInput, 10);
+// Desktop keyboard support via hidden input
+document.addEventListener("keydown", (e) => {
+  if (!drillActive) return;
+  if (e.key === "Enter") {
+    e.preventDefault();
+    submitAnswer();
+  } else if (e.key === "Backspace") {
+    e.preventDefault();
+    backspaceDigit();
+  } else if (e.key >= "0" && e.key <= "9") {
+    e.preventDefault();
+    appendDigit(e.key);
   }
 });
 
