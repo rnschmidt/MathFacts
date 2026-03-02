@@ -524,17 +524,39 @@ const FOCUS_WEIGHTS = {
 
 function generateProblems(level) {
   const lvl = LEVELS[level];
-  const weights = FOCUS_WEIGHTS[level] || {};
+  const focusWeights = FOCUS_WEIGHTS[level] || {};
+  const adaptive = (level >= 4) ? calcAdaptiveWeights() : {};
   const problems = [];
   for (const a of lvl.multipliers) {
-    const copies = weights[a] || 1;
+    const focusCopies = focusWeights[a] || 1;
     for (const b of lvl.factors) {
+      const adaptiveCopies = adaptive[`${a}x${b}`] || 1;
+      const copies = Math.max(focusCopies, adaptiveCopies);
       for (let i = 0; i < copies; i++) {
         problems.push({ a, b, answer: a * b });
       }
     }
   }
   return shuffle(problems);
+}
+
+function calcAdaptiveWeights() {
+  const stats = data.factStats || {};
+  const entries = Object.entries(stats).filter(([, s]) => s.count >= 3);
+  if (!entries.length) return {};
+
+  const avgTimes = entries.filter(([, s]) => s.avg !== null).map(([, s]) => s.avg);
+  const avgOfAvgs = avgTimes.length ? avgTimes.reduce((s, t) => s + t, 0) / avgTimes.length : null;
+
+  const weights = {};
+  for (const [key, s] of entries) {
+    const accuracy = s.count > 0 ? s.correct / s.count : 1;
+    const slow = avgOfAvgs && s.avg !== null && s.avg > avgOfAvgs * 1.5;
+    if (accuracy < 0.8 || slow) {
+      weights[key] = 2;
+    }
+  }
+  return weights;
 }
 
 function shuffle(arr) {
