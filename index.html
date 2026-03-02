@@ -473,11 +473,11 @@ h1 { font-size: 1.6rem; margin-bottom: 4px; text-align: center; }
 // DATA & STATE
 // ──────────────────────────────────────────
 const LEVELS = {
-  1: { name: "Level 1", label: "2s, 3s, 4s, 5s", multipliers: [2, 3, 4, 5], factors: [2, 3, 4, 5, 6, 7, 8, 9] },
-  2: { name: "Level 2", label: "6s, 7s, 8s, 9s", multipliers: [6, 7, 8, 9], factors: [2, 3, 4, 5, 6, 7, 8, 9] },
-  3: { name: "Level 3", label: "All Mixed (2–9)", multipliers: [2, 3, 4, 5, 6, 7, 8, 9], factors: [2, 3, 4, 5, 6, 7, 8, 9] },
-  4: { name: "Level 4", label: "All Mixed (2–12)", multipliers: [2,3,4,5,6,7,8,9,10,11,12], factors: [2,3,4,5,6,7,8,9,10,11,12] },
-  5: { name: "Level 5", label: "All Mixed (2–13)", multipliers: [2,3,4,5,6,7,8,9,10,11,12,13], factors: [2,3,4,5,6,7,8,9,10,11,12,13] },
+  1: { name: "Level 1", label: "2s, 3s, 4s, 5s", multipliers: [2, 3, 4, 5], factors: [2, 3, 4, 5, 6, 7, 8, 9], seconds: 60 },
+  2: { name: "Level 2", label: "6s, 7s, 8s, 9s", multipliers: [6, 7, 8, 9], factors: [2, 3, 4, 5, 6, 7, 8, 9], seconds: 60 },
+  3: { name: "Level 3", label: "All Mixed (2–9)", multipliers: [2, 3, 4, 5, 6, 7, 8, 9], factors: [2, 3, 4, 5, 6, 7, 8, 9], seconds: 60 },
+  4: { name: "Level 4", label: "11s, 12s, 13s", multipliers: [11, 12, 13], factors: [2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13], seconds: 60 },
+  5: { name: "Level 5", label: "All Mixed (2–13)", multipliers: [2,3,4,5,6,7,8,9,10,11,12,13], factors: [2,3,4,5,6,7,8,9,10,11,12,13], seconds: 120 },
 };
 const FACTORS = [2, 3, 4, 5, 6, 7, 8, 9];
 const GOAL_PPM = 40;
@@ -516,20 +516,13 @@ function saveData() {
 // ──────────────────────────────────────────
 // PROBLEM GENERATION
 // ──────────────────────────────────────────
-// Extra copies of focus multipliers so new/hard facts appear more often
-const FOCUS_WEIGHTS = {
-  4: { 12: 3 },       // Level 4: 12s are hard and new
-  5: { 13: 3 },       // Level 5: 13s are hard and new
-};
-
 function generateProblems(level) {
   const lvl = LEVELS[level];
-  const focusWeights = FOCUS_WEIGHTS[level] || {};
   const adaptive = (level >= 4) ? calcAdaptiveWeights() : {};
   const problems = [];
   for (const a of lvl.multipliers) {
-    const focusCopies = focusWeights[a] || 1;
     for (const b of lvl.factors) {
+      const focusCopies = getFocusWeight(level, a, b);
       const adaptiveCopies = adaptive[`${a}x${b}`] || 1;
       const copies = Math.max(focusCopies, adaptiveCopies);
       for (let i = 0; i < copies; i++) {
@@ -538,6 +531,16 @@ function generateProblems(level) {
     }
   }
   return shuffle(problems);
+}
+
+function getFocusWeight(level, a, b) {
+  if (level === 4) {
+    // 12s and 13s: heavy weight
+    if (a === 12 || a === 13) return 3;
+    // 11s: easy facts (11×2 through 11×9) get reduced, hard ones (11×11+) get normal
+    if (a === 11) return b >= 11 ? 2 : 1;
+  }
+  return 1;
 }
 
 function calcAdaptiveWeights() {
@@ -770,8 +773,9 @@ function startDrill(level) {
   practiceMode = false;
   lastShownProblem = null;
 
+  const drillSeconds = LEVELS[level].seconds || DRILL_SECONDS;
   showScreen("drill-screen");
-  updateTimerDisplay(DRILL_SECONDS);
+  updateTimerDisplay(drillSeconds);
   document.getElementById("score-live").textContent = "0 correct";
   document.getElementById("feedback").textContent = "";
   document.getElementById("feedback").className = "feedback";
@@ -782,7 +786,7 @@ function startDrill(level) {
   // Countdown
   showCountdown(() => {
     drillActive = true;
-    drillTimeLeft = DRILL_SECONDS;
+    drillTimeLeft = drillSeconds;
     showProblem();
     drillTimer = setInterval(tick, 1000);
     clearAnswer();
@@ -968,7 +972,8 @@ function endDrill() {
   drillActive = false;
   clearInterval(drillTimer);
 
-  const ppm = drillCorrect; // 1-minute drill so correct count = PPM
+  const drillSeconds = LEVELS[currentLevel].seconds || DRILL_SECONDS;
+  const ppm = Math.round(drillCorrect * (60 / drillSeconds));
   const accuracy = drillTotal > 0 ? Math.round((drillCorrect / drillTotal) * 100) : 0;
 
   let newUnlock = false;
