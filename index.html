@@ -516,12 +516,22 @@ function saveData() {
 // ──────────────────────────────────────────
 // PROBLEM GENERATION
 // ──────────────────────────────────────────
+// Extra copies of focus multipliers so new/hard facts appear more often
+const FOCUS_WEIGHTS = {
+  4: { 12: 3 },       // Level 4: 12s are hard and new
+  5: { 13: 3 },       // Level 5: 13s are hard and new
+};
+
 function generateProblems(level) {
   const lvl = LEVELS[level];
+  const weights = FOCUS_WEIGHTS[level] || {};
   const problems = [];
   for (const a of lvl.multipliers) {
+    const copies = weights[a] || 1;
     for (const b of lvl.factors) {
-      problems.push({ a, b, answer: a * b });
+      for (let i = 0; i < copies; i++) {
+        problems.push({ a, b, answer: a * b });
+      }
     }
   }
   return shuffle(problems);
