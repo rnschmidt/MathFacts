@@ -473,11 +473,11 @@ h1 { font-size: 1.6rem; margin-bottom: 4px; text-align: center; }
 // DATA & STATE
 // ──────────────────────────────────────────
 const LEVELS = {
-  1: { name: "Level 1", label: "2s, 3s, 4s, 5s", multipliers: [2, 3, 4, 5], factors: [2, 3, 4, 5, 6, 7, 8, 9], seconds: 60 },
-  2: { name: "Level 2", label: "6s, 7s, 8s, 9s", multipliers: [6, 7, 8, 9], factors: [2, 3, 4, 5, 6, 7, 8, 9], seconds: 60 },
-  3: { name: "Level 3", label: "All Mixed (2–9)", multipliers: [2, 3, 4, 5, 6, 7, 8, 9], factors: [2, 3, 4, 5, 6, 7, 8, 9], seconds: 60 },
-  4: { name: "Level 4", label: "11s, 12s, 13s", multipliers: [11, 12, 13], factors: [2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13], seconds: 60 },
-  5: { name: "Level 5", label: "All Mixed (2–13)", multipliers: [2,3,4,5,6,7,8,9,10,11,12,13], factors: [2,3,4,5,6,7,8,9,10,11,12,13], seconds: 120 },
+  1: { name: "Level 1", label: "2s, 3s, 4s, 5s", multipliers: [2, 3, 4, 5], factors: [2, 3, 4, 5, 6, 7, 8, 9], seconds: 60, goal: 40 },
+  2: { name: "Level 2", label: "6s, 7s, 8s, 9s", multipliers: [6, 7, 8, 9], factors: [2, 3, 4, 5, 6, 7, 8, 9], seconds: 60, goal: 40 },
+  3: { name: "Level 3", label: "All Mixed (2–9)", multipliers: [2, 3, 4, 5, 6, 7, 8, 9], factors: [2, 3, 4, 5, 6, 7, 8, 9], seconds: 60, goal: 40 },
+  4: { name: "Level 4", label: "11s, 12s, 13s", multipliers: [11, 12, 13], factors: [2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13], seconds: 60, goal: 30 },
+  5: { name: "Level 5", label: "All Mixed (2–13)", multipliers: [2,3,4,5,6,7,8,9,10,11,12,13], factors: [2,3,4,5,6,7,8,9,10,11,12,13], seconds: 120, goal: 35 },
 };
 const FACTORS = [2, 3, 4, 5, 6, 7, 8, 9];
 const GOAL_PPM = 40;
@@ -613,7 +613,7 @@ function renderHome() {
     const unlocked = data.unlockedLevels.includes(lvl);
     const bestForLevel = history.filter(h => h.level === lvl);
     const bestLvlPPM = bestForLevel.length ? Math.max(...bestForLevel.map(h => h.ppm)) : 0;
-    const mastered = bestLvlPPM >= GOAL_PPM;
+    const mastered = bestLvlPPM >= LEVELS[lvl].goal;
 
     const card = document.createElement("div");
     card.className = "level-card" + (unlocked ? "" : " locked");
@@ -723,14 +723,15 @@ function renderChart() {
   }
 
   const chartH = 120;
-  const maxPPM = Math.max(GOAL_PPM + 5, ...recent.map(h => h.ppm));
-  const goalPx = Math.round((GOAL_PPM / maxPPM) * chartH);
+  const maxGoal = Math.max(...recent.map(h => LEVELS[h.level] ? LEVELS[h.level].goal : GOAL_PPM));
+  const maxPPM = Math.max(maxGoal + 5, ...recent.map(h => h.ppm));
 
   let barsHTML = recent.map(h => {
     const barH = Math.max(2, Math.round((h.ppm / maxPPM) * chartH));
-    const atGoal = h.ppm >= GOAL_PPM;
+    const levelGoal = LEVELS[h.level] ? LEVELS[h.level].goal : GOAL_PPM;
+    const atGoal = h.ppm >= levelGoal;
     return `
-      <div class="chart-bar-wrap" title="Level ${h.level}: ${h.ppm} PPM">
+      <div class="chart-bar-wrap" title="Level ${h.level}: ${h.ppm} PPM (goal: ${levelGoal})">
         <div class="chart-bar ${atGoal ? "at-goal" : "below-goal"}" style="height:${barH}px"></div>
       </div>`;
   }).join("");
@@ -741,10 +742,7 @@ function renderChart() {
 
   area.innerHTML = `
     <div class="chart-wrapper">
-      <div class="chart" style="position:relative;">
-        <div style="position:absolute; bottom:${goalPx}px; left:0; right:0; border-top:2px dashed var(--green); z-index:0; pointer-events:none;">
-          <span style="position:absolute; right:0; top:-16px; font-size:0.65rem; color:var(--green); font-weight:600;">Goal: ${GOAL_PPM}</span>
-        </div>
+      <div class="chart">
         ${barsHTML}
       </div>
       <div class="chart-dates">
@@ -989,7 +987,8 @@ function endDrill() {
 
     // Check level unlock
     const maxLevel = Math.max(...Object.keys(LEVELS).map(Number));
-    if (ppm >= GOAL_PPM && currentLevel < maxLevel) {
+    const levelGoal = LEVELS[currentLevel].goal;
+    if (ppm >= levelGoal && currentLevel < maxLevel) {
       const nextLevel = currentLevel + 1;
       if (!data.unlockedLevels.includes(nextLevel)) {
         data.unlockedLevels.push(nextLevel);
@@ -1009,7 +1008,8 @@ function showResults(ppm, correct, incorrect, accuracy, newUnlock) {
 
   const ppmEl = document.getElementById("results-ppm");
   ppmEl.textContent = ppm;
-  ppmEl.classList.toggle("goal-met", ppm >= GOAL_PPM);
+  const levelGoal = LEVELS[currentLevel].goal;
+  ppmEl.classList.toggle("goal-met", ppm >= levelGoal);
 
   document.getElementById("results-correct").textContent = correct;
   document.getElementById("results-incorrect").textContent = incorrect;
@@ -1027,10 +1027,10 @@ function showResults(ppm, correct, incorrect, accuracy, newUnlock) {
     milestoneArea.innerHTML = `<div class="milestone-msg">Practice session — keep drilling those weak spots!</div>`;
   } else if (newUnlock) {
     milestoneArea.innerHTML = `<div class="milestone-msg">Level ${currentLevel + 1} Unlocked! Keep it up!</div>`;
-  } else if (ppm >= GOAL_PPM) {
-    milestoneArea.innerHTML = `<div class="milestone-msg">Goal reached — ${GOAL_PPM} PPM! Amazing!</div>`;
-  } else if (ppm >= 30) {
-    milestoneArea.innerHTML = `<div class="milestone-msg">Almost there! Just ${GOAL_PPM - ppm} more to reach the goal!</div>`;
+  } else if (ppm >= levelGoal) {
+    milestoneArea.innerHTML = `<div class="milestone-msg">Goal reached — ${levelGoal} PPM! Amazing!</div>`;
+  } else if (ppm >= levelGoal - 10) {
+    milestoneArea.innerHTML = `<div class="milestone-msg">Almost there! Just ${levelGoal - ppm} more to reach the goal!</div>`;
   }
 
   // Slowest correct answers this drill
