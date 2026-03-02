@@ -776,8 +776,8 @@ function startDrill(level) {
   document.getElementById("feedback").textContent = "";
   document.getElementById("feedback").className = "feedback";
   document.getElementById("drill-progress").textContent = `${LEVELS[level].name}: ${LEVELS[level].label}`;
+  document.getElementById("problem-display").textContent = "";
   clearAnswer();
-
 
   // Countdown
   showCountdown(() => {
