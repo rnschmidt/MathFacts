@@ -122,9 +122,9 @@ h1 { font-size: 1.6rem; margin-bottom: 4px; text-align: center; }
 .answer-display.has-value { border-color: var(--blue); }
 
 .feedback {
-  min-height: 36px; height: 36px; display: flex; align-items: center; justify-content: center;
+  min-height: 52px; height: 52px; display: flex; align-items: center; justify-content: center;
   font-size: 1.2rem; font-weight: 600; margin-top: 8px;
-  visibility: hidden;
+  visibility: hidden; text-align: center;
 }
 .feedback.correct, .feedback.incorrect { visibility: visible; }
 .feedback.correct { color: var(--green); }
@@ -1195,7 +1195,7 @@ function submitRetrievalAnswer() {
         advanceRetrieval();
       }, 600);
     } else {
-      // Wrong again — shake and clear
+      // Wrong again — clear and retry
       fb.textContent = `Type ${fact.answer} to continue`;
       fb.className = "feedback incorrect";
       retrievalBuffer = "";
@@ -1218,7 +1218,7 @@ function submitRetrievalAnswer() {
     }, 400);
   } else {
     retrievalMistakesThisPass++;
-    fb.textContent = `Nope — ${fact.answer}. Type it to continue.`;
+    fb.textContent = `Nope — ${fact.answer}. Type it!`;
     fb.className = "feedback incorrect";
     retrievalWaitingForCorrection = true;
     retrievalCorrectAnswer = fact.answer;
