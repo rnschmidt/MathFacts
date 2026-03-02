@@ -554,8 +554,9 @@ function calcAdaptiveWeights() {
   const weights = {};
   for (const [key, s] of entries) {
     const accuracy = s.count > 0 ? s.correct / s.count : 1;
+    const neverCorrect = s.avg === null;
     const slow = avgOfAvgs && s.avg !== null && s.avg > avgOfAvgs * 1.5;
-    if (accuracy < 0.8 || slow) {
+    if (accuracy < 0.8 || slow || neverCorrect) {
       weights[key] = 2;
     }
   }
@@ -654,20 +655,18 @@ function renderNeedsWork() {
 
   if (!entries.length) { container.style.display = "none"; return; }
 
-  // Score each fact: higher = more trouble (slow time + low accuracy)
-  const avgOfAvgs = entries.filter(e => e.avg !== null).reduce((s, e) => s + e.avg, 0) / entries.filter(e => e.avg !== null).length || 1;
-  const scored = entries
-    .filter(e => e.avg !== null)
-    .map(e => ({
-      ...e,
-      // Combine slowness and error rate into a single score
-      trouble: (e.avg / avgOfAvgs) + (1 - e.accuracy) * 3,
-    }))
-    .sort((a, b) => b.trouble - a.trouble)
-    .slice(0, 8);
+  // Score: accuracy-first, then speed as tiebreaker
+  const avgTimes = entries.filter(e => e.avg !== null).map(e => e.avg);
+  const avgOfAvgs = avgTimes.length ? avgTimes.reduce((s, t) => s + t, 0) / avgTimes.length : 1;
+  const scored = entries.map(e => {
+    const speedRatio = e.avg !== null ? (e.avg / avgOfAvgs) : 10; // null avg = never correct = very high
+    return { ...e, trouble: (1 - e.accuracy) * 5 + speedRatio };
+  }).sort((a, b) => b.trouble - a.trouble).slice(0, 8);
 
-  // Only show facts that are actually above average in trouble
-  const needsWork = scored.filter(e => e.trouble > 1.3);
+  // Show if: absolute thresholds OR relatively worse than average
+  const needsWork = scored.filter(e =>
+    e.accuracy < 0.85 || (e.avg !== null && e.avg > 4) || e.trouble > 1.3
+  );
   if (!needsWork.length) { container.style.display = "none"; return; }
 
   // Store for practice drill
@@ -930,7 +929,7 @@ function submitAnswer() {
   clearAnswer();
 }
 
-function updateFactStats(a, b, correct, time, skipTime) {
+function updateFactStats(a, b, correct, time) {
   if (!data.factStats) data.factStats = {};
   const key = `${a}x${b}`;
   let stat = data.factStats[key];
@@ -942,12 +941,10 @@ function updateFactStats(a, b, correct, time, skipTime) {
   if (correct) {
     stat.correct++;
     // Exponential moving average (weight recent more heavily)
-    if (!skipTime) {
-      if (stat.avg === null) {
-        stat.avg = time;
-      } else {
-        stat.avg = 0.7 * stat.avg + 0.3 * time;
-      }
+    if (stat.avg === null) {
+      stat.avg = time;
+    } else {
+      stat.avg = 0.7 * stat.avg + 0.3 * time;
     }
   }
 }
@@ -1227,9 +1224,8 @@ function submitRetrievalAnswer() {
     return;
   }
 
-  // Normal answer check
+  // Normal answer check (no stats update — retrieval is for learning, not measurement)
   const correct = userAnswer === fact.answer;
-  updateFactStats(fact.a, fact.b, correct, 0, true);
 
   if (correct) {
     fb.textContent = "Correct!";
