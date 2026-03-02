@@ -1339,6 +1339,24 @@ document.addEventListener("keydown", (e) => {
 // ──────────────────────────────────────────
 // INIT
 // ──────────────────────────────────────────
+// Sync unlocks from history (handles rule changes and migrations)
+function syncUnlocks() {
+  const maxLevel = Math.max(...Object.keys(LEVELS).map(Number));
+  let changed = false;
+  for (let lvl = 1; lvl < maxLevel; lvl++) {
+    const nextLevel = lvl + 1;
+    if (data.unlockedLevels.includes(nextLevel)) continue;
+    const passed = data.history.some(h =>
+      h.level === lvl && h.ppm >= LEVELS[lvl].goal && h.accuracy >= 95
+    );
+    if (passed) {
+      data.unlockedLevels.push(nextLevel);
+      changed = true;
+    }
+  }
+  if (changed) saveData();
+}
+syncUnlocks();
 renderHome();
 </script>
 </body>
