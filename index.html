@@ -613,7 +613,7 @@ function renderHome() {
     const unlocked = data.unlockedLevels.includes(lvl);
     const bestForLevel = history.filter(h => h.level === lvl);
     const bestLvlPPM = bestForLevel.length ? Math.max(...bestForLevel.map(h => h.ppm)) : 0;
-    const mastered = bestLvlPPM >= LEVELS[lvl].goal;
+    const mastered = bestForLevel.some(h => h.ppm >= LEVELS[lvl].goal && h.accuracy >= 95);
 
     const card = document.createElement("div");
     card.className = "level-card" + (unlocked ? "" : " locked");
@@ -988,7 +988,7 @@ function endDrill() {
     // Check level unlock
     const maxLevel = Math.max(...Object.keys(LEVELS).map(Number));
     const levelGoal = LEVELS[currentLevel].goal;
-    if (ppm >= levelGoal && currentLevel < maxLevel) {
+    if (ppm >= levelGoal && accuracy >= 95 && currentLevel < maxLevel) {
       const nextLevel = currentLevel + 1;
       if (!data.unlockedLevels.includes(nextLevel)) {
         data.unlockedLevels.push(nextLevel);
@@ -1027,6 +1027,8 @@ function showResults(ppm, correct, incorrect, accuracy, newUnlock) {
     milestoneArea.innerHTML = `<div class="milestone-msg">Practice session — keep drilling those weak spots!</div>`;
   } else if (newUnlock) {
     milestoneArea.innerHTML = `<div class="milestone-msg">Level ${currentLevel + 1} Unlocked! Keep it up!</div>`;
+  } else if (ppm >= levelGoal && accuracy < 95) {
+    milestoneArea.innerHTML = `<div class="milestone-msg">Speed is there! Need 95% accuracy to unlock next level (got ${accuracy}%)</div>`;
   } else if (ppm >= levelGoal) {
     milestoneArea.innerHTML = `<div class="milestone-msg">Goal reached — ${levelGoal} PPM! Amazing!</div>`;
   } else if (ppm >= levelGoal - 10) {
