@@ -768,6 +768,7 @@ function startDrill(level) {
   drillResults = [];
   drillActive = false;
   practiceMode = false;
+  lastShownProblem = null;
 
   showScreen("drill-screen");
   updateTimerDisplay(DRILL_SECONDS);
@@ -837,12 +838,29 @@ function updateTimerDisplay(seconds) {
   el.classList.toggle("warning", seconds <= 10);
 }
 
+let lastShownProblem = null;
+
 function showProblem() {
   if (drillIndex >= drillProblems.length) {
     drillProblems = shuffle(drillProblems);
     drillIndex = 0;
   }
+  // Skip duplicates of the problem just answered (from weighted copies or reshuffle boundary)
+  if (lastShownProblem) {
+    let attempts = 0;
+    while (attempts < drillProblems.length &&
+           drillProblems[drillIndex].a === lastShownProblem.a &&
+           drillProblems[drillIndex].b === lastShownProblem.b) {
+      drillIndex++;
+      attempts++;
+      if (drillIndex >= drillProblems.length) {
+        drillProblems = shuffle(drillProblems);
+        drillIndex = 0;
+      }
+    }
+  }
   const p = drillProblems[drillIndex];
+  lastShownProblem = p;
   document.getElementById("problem-display").textContent = `${p.a} × ${p.b}`;
   problemStartTime = performance.now();
 }
