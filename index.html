@@ -96,6 +96,34 @@ h1 { font-size: 1.6rem; margin-bottom: 4px; text-align: center; }
 .stat-box .stat-value { font-size: 1.5rem; font-weight: 700; }
 .stat-box .stat-label { font-size: 0.75rem; color: var(--gray-dark); margin-top: 2px; }
 
+/* ─── Operation Tabs ─── */
+.op-tabs {
+  display: flex;
+  background: #e0e0e0;
+  border-radius: 10px;
+  padding: 3px;
+  margin-bottom: 16px;
+  width: 100%;
+  max-width: 320px;
+}
+.op-tab {
+  flex: 1;
+  padding: 8px 0;
+  border: none;
+  border-radius: 8px;
+  background: transparent;
+  font-size: 1.1rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.2s, color 0.2s;
+  color: var(--gray-dark);
+}
+.op-tab.active {
+  background: #fff;
+  color: var(--text);
+  box-shadow: 0 1px 3px rgba(0,0,0,0.12);
+}
+
 /* ─── Drill Screen ─── */
 .drill-header {
   display: flex; justify-content: space-between; align-items: center;
@@ -315,7 +343,14 @@ h1 { font-size: 1.6rem; margin-bottom: 4px; text-align: center; }
 <!-- ════════════ HOME SCREEN ════════════ -->
 <div id="home-screen" class="screen active">
   <h1>Math Facts Fluency</h1>
-  <p class="subtitle">Master your multiplication facts!</p>
+  <p class="subtitle" id="home-subtitle">Master your multiplication facts!</p>
+
+  <div class="op-tabs" id="op-tabs">
+    <button class="op-tab active" data-op="multiply" onclick="selectOp('multiply')">×</button>
+    <button class="op-tab" data-op="add" onclick="selectOp('add')">+</button>
+    <button class="op-tab" data-op="subtract" onclick="selectOp('subtract')">−</button>
+    <button class="op-tab" data-op="divide" onclick="selectOp('divide')">÷</button>
+  </div>
 
   <div class="stats-bar">
     <div class="stat-box">
@@ -472,19 +507,60 @@ h1 { font-size: 1.6rem; margin-bottom: 4px; text-align: center; }
 // ──────────────────────────────────────────
 // DATA & STATE
 // ──────────────────────────────────────────
-const LEVELS = {
-  1: { name: "Level 1", label: "2s, 3s, 4s, 5s", multipliers: [2, 3, 4, 5], factors: [2, 3, 4, 5, 6, 7, 8, 9], seconds: 60, goal: 40 },
-  2: { name: "Level 2", label: "6s, 7s, 8s, 9s", multipliers: [6, 7, 8, 9], factors: [2, 3, 4, 5, 6, 7, 8, 9], seconds: 60, goal: 40 },
-  3: { name: "Level 3", label: "All Mixed (2–9)", multipliers: [2, 3, 4, 5, 6, 7, 8, 9], factors: [2, 3, 4, 5, 6, 7, 8, 9], seconds: 60, goal: 40 },
-  4: { name: "Level 4", label: "11s, 12s, 13s", multipliers: [11, 12, 13], factors: [2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13], seconds: 60, goal: 33 },
-  5: { name: "Level 5", label: "All Mixed (2–13)", multipliers: [2,3,4,5,6,7,8,9,10,11,12,13], factors: [2,3,4,5,6,7,8,9,10,11,12,13], seconds: 120, goal: 35 },
+const OPS = {
+  multiply: { symbol: '×', label: 'multiplication', retrievalTabs: [2,3,4,5,6,7,8,9,10,11,12,13], tabPrefix: '' },
+  divide:   { symbol: '÷', label: 'division',       retrievalTabs: [2,3,4,5,6,7,8,9,10,11,12,13], tabPrefix: '÷' },
+  add:      { symbol: '+', label: 'addition',        retrievalTabs: [1,2,3,4,5,6,7,8,9,10],        tabPrefix: '+' },
+  subtract: { symbol: '−', label: 'subtraction',     retrievalTabs: [1,2,3,4,5,6,7,8,9,10],        tabPrefix: '−' },
 };
-const FACTORS = [2, 3, 4, 5, 6, 7, 8, 9];
-const GOAL_PPM = 40;
+
+const LEVELS_BY_OP = {
+  multiply: {
+    1: { name: "Level 1", label: "2s, 3s, 4s, 5s", multipliers: [2, 3, 4, 5], factors: [2, 3, 4, 5, 6, 7, 8, 9], seconds: 60, goal: 40 },
+    2: { name: "Level 2", label: "6s, 7s, 8s, 9s", multipliers: [6, 7, 8, 9], factors: [2, 3, 4, 5, 6, 7, 8, 9], seconds: 60, goal: 40 },
+    3: { name: "Level 3", label: "All Mixed (2–9)", multipliers: [2, 3, 4, 5, 6, 7, 8, 9], factors: [2, 3, 4, 5, 6, 7, 8, 9], seconds: 60, goal: 40 },
+    4: { name: "Level 4", label: "11s, 12s, 13s", multipliers: [11, 12, 13], factors: [2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13], seconds: 60, goal: 33 },
+    5: { name: "Level 5", label: "All Mixed (2–13)", multipliers: [2,3,4,5,6,7,8,9,10,11,12,13], factors: [2,3,4,5,6,7,8,9,10,11,12,13], seconds: 120, goal: 35 },
+  },
+  divide: {
+    1: { name: "Level 1", label: "÷2, ÷3, ÷4, ÷5", multipliers: [2, 3, 4, 5], factors: [2, 3, 4, 5, 6, 7, 8, 9], seconds: 60, goal: 40 },
+    2: { name: "Level 2", label: "÷6, ÷7, ÷8, ÷9", multipliers: [6, 7, 8, 9], factors: [2, 3, 4, 5, 6, 7, 8, 9], seconds: 60, goal: 40 },
+    3: { name: "Level 3", label: "All Mixed (÷2–÷9)", multipliers: [2, 3, 4, 5, 6, 7, 8, 9], factors: [2, 3, 4, 5, 6, 7, 8, 9], seconds: 60, goal: 40 },
+    4: { name: "Level 4", label: "÷11, ÷12, ÷13", multipliers: [11, 12, 13], factors: [2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13], seconds: 60, goal: 33 },
+    5: { name: "Level 5", label: "All Mixed (÷2–÷13)", multipliers: [2,3,4,5,6,7,8,9,10,11,12,13], factors: [2,3,4,5,6,7,8,9,10,11,12,13], seconds: 120, goal: 35 },
+  },
+  add: {
+    1: { name: "Level 1", label: "+1, +2, +3", multipliers: [1, 2, 3], factors: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10], seconds: 60, goal: 40 },
+    2: { name: "Level 2", label: "+4, +5, +6", multipliers: [4, 5, 6], factors: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10], seconds: 60, goal: 40 },
+    3: { name: "Level 3", label: "+7, +8, +9, +10", multipliers: [7, 8, 9, 10], factors: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10], seconds: 60, goal: 40 },
+    4: { name: "Level 4", label: "All Mixed (+1–+10)", multipliers: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10], factors: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10], seconds: 60, goal: 40 },
+  },
+  subtract: {
+    1: { name: "Level 1", label: "−1, −2, −3", multipliers: [1, 2, 3], factors: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10], seconds: 60, goal: 40 },
+    2: { name: "Level 2", label: "−4, −5, −6", multipliers: [4, 5, 6], factors: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10], seconds: 60, goal: 40 },
+    3: { name: "Level 3", label: "−7, −8, −9, −10", multipliers: [7, 8, 9, 10], factors: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10], seconds: 60, goal: 40 },
+    4: { name: "Level 4", label: "All Mixed (−1–−10)", multipliers: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10], factors: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10], seconds: 60, goal: 40 },
+  },
+};
+
+function getLevels(op) { return LEVELS_BY_OP[op || data.currentOp]; }
+function opSymbol(op) { return OPS[op || data.currentOp].symbol; }
+function opData(op) { return data[op || data.currentOp]; }
+
+function makeProblem(op, a, b) {
+  switch (op || data.currentOp) {
+    case 'multiply':  return { a, b, answer: a * b, rawA: a, rawB: b };
+    case 'divide':    return { a: a * b, b: a, answer: b, rawA: a, rawB: b };
+    case 'add':       return { a, b, answer: a + b, rawA: a, rawB: b };
+    case 'subtract':  return { a: a + b, b: a, answer: b, rawA: a, rawB: b };
+    default:          return { a, b, answer: a * b, rawA: a, rawB: b };
+  }
+}
+
 const DRILL_SECONDS = 60;
 
 let data = loadData();
-let currentLevel = data.currentLevel;
+let currentLevel = 1;
 let drillTimer = null;
 let drillTimeLeft = 0;
 let drillProblems = [];
@@ -499,14 +575,82 @@ let countdownInterval = null;
 let problemStartTime = 0;
 
 // ──────────────────────────────────────────
+// SOUND & HAPTIC FEEDBACK
+// ──────────────────────────────────────────
+let _audioCtx = null;
+function getAudioCtx() {
+  if (!_audioCtx) _audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+  if (_audioCtx.state === 'suspended') _audioCtx.resume();
+  return _audioCtx;
+}
+
+function playTone(freq, duration, type = 'sine') {
+  try {
+    const ctx = getAudioCtx();
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+    osc.type = type;
+    osc.frequency.value = freq;
+    gain.gain.value = 0.15;
+    gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + duration);
+    osc.connect(gain);
+    gain.connect(ctx.destination);
+    osc.start(ctx.currentTime);
+    osc.stop(ctx.currentTime + duration);
+  } catch (e) { /* silently ignore audio errors */ }
+}
+
+function playCorrect() {
+  playTone(880, 0.12, 'sine');
+  try { navigator.vibrate(30); } catch (e) {}
+}
+
+function playIncorrect() {
+  playTone(220, 0.2, 'square');
+  try { navigator.vibrate([40, 30, 40]); } catch (e) {}
+}
+
+function playTimesUp() {
+  playTone(660, 0.15, 'sine');
+  setTimeout(() => playTone(440, 0.2, 'sine'), 160);
+  try { navigator.vibrate(100); } catch (e) {}
+}
+
+function playComplete() {
+  playTone(523, 0.12, 'sine');                    // C5
+  setTimeout(() => playTone(659, 0.12, 'sine'), 130);  // E5
+  setTimeout(() => playTone(784, 0.2, 'sine'), 260);   // G5
+  try { navigator.vibrate([30, 50, 30, 50, 30]); } catch (e) {}
+}
+
+// ──────────────────────────────────────────
 // PERSISTENCE
 // ──────────────────────────────────────────
 function loadData() {
+  const defaults = () => ({ unlockedLevels: [1], history: [], factStats: {} });
   try {
     const raw = localStorage.getItem("mathfacts");
-    if (raw) return JSON.parse(raw);
+    if (raw) {
+      const d = JSON.parse(raw);
+      // Old format: has unlockedLevels at top level, no multiply key
+      if (d.unlockedLevels && !d.multiply) {
+        return {
+          currentOp: 'multiply',
+          multiply: { unlockedLevels: d.unlockedLevels, history: d.history || [], factStats: d.factStats || {} },
+          divide: defaults(),
+          add: defaults(),
+          subtract: defaults(),
+        };
+      }
+      // New format: ensure all ops exist
+      if (!d.currentOp) d.currentOp = 'multiply';
+      for (const op of ['multiply', 'divide', 'add', 'subtract']) {
+        if (!d[op]) d[op] = defaults();
+      }
+      return d;
+    }
   } catch (e) { /* ignore */ }
-  return { currentLevel: 1, unlockedLevels: [1], history: [], factStats: {} };
+  return { currentOp: 'multiply', multiply: defaults(), divide: defaults(), add: defaults(), subtract: defaults() };
 }
 
 function saveData() {
@@ -516,35 +660,34 @@ function saveData() {
 // ──────────────────────────────────────────
 // PROBLEM GENERATION
 // ──────────────────────────────────────────
-function generateProblems(level) {
-  const lvl = LEVELS[level];
-  const adaptive = (level >= 4) ? calcAdaptiveWeights() : {};
+function generateProblems(level, op) {
+  op = op || data.currentOp;
+  const lvl = getLevels(op)[level];
+  const adaptive = calcAdaptiveWeights(op);
   const problems = [];
   for (const a of lvl.multipliers) {
     for (const b of lvl.factors) {
-      const focusCopies = getFocusWeight(level, a, b);
+      const focusCopies = getFocusWeight(op, level, a, b);
       const adaptiveCopies = adaptive[`${a}x${b}`] || 1;
       const copies = Math.max(focusCopies, adaptiveCopies);
       for (let i = 0; i < copies; i++) {
-        problems.push({ a, b, answer: a * b });
+        problems.push(makeProblem(op, a, b));
       }
     }
   }
   return shuffle(problems);
 }
 
-function getFocusWeight(level, a, b) {
-  if (level === 4) {
-    // 12s and 13s: heavy weight
+function getFocusWeight(op, level, a, b) {
+  if ((op === 'multiply' || op === 'divide') && level === 4) {
     if (a === 12 || a === 13) return 3;
-    // 11s: easy facts (11×2 through 11×9) get reduced, hard ones (11×11+) get normal
     if (a === 11) return b >= 11 ? 2 : 1;
   }
   return 1;
 }
 
-function calcAdaptiveWeights() {
-  const stats = data.factStats || {};
+function calcAdaptiveWeights(op) {
+  const stats = opData(op).factStats || {};
   const entries = Object.entries(stats).filter(([, s]) => s.count >= 3);
   if (!entries.length) return {};
 
@@ -595,11 +738,37 @@ function showScreen(id) {
 }
 
 // ──────────────────────────────────────────
+// OPERATION TABS
+// ──────────────────────────────────────────
+function selectOp(op) {
+  data.currentOp = op;
+  saveData();
+  renderOpTabs();
+  renderHome();
+}
+
+function renderOpTabs() {
+  const tabs = document.getElementById("op-tabs");
+  if (!tabs) return;
+  tabs.querySelectorAll(".op-tab").forEach(btn => {
+    btn.classList.toggle("active", btn.dataset.op === data.currentOp);
+  });
+}
+
+// ──────────────────────────────────────────
 // HOME SCREEN
 // ──────────────────────────────────────────
 function renderHome() {
+  const op = data.currentOp;
+  const od = opData();
+  const levels = getLevels();
+
+  // Update subtitle & tabs
+  document.getElementById("home-subtitle").textContent = `Master your ${OPS[op].label} facts!`;
+  renderOpTabs();
+
   // Stats
-  const history = data.history;
+  const history = od.history;
   const bestPPM = history.length ? Math.max(...history.map(h => h.ppm)) : null;
   document.getElementById("stat-best").textContent = bestPPM !== null ? bestPPM : "—";
   document.getElementById("stat-drills").textContent = history.length;
@@ -608,19 +777,19 @@ function renderHome() {
   // Level cards
   const container = document.getElementById("level-cards");
   container.innerHTML = "";
-  const levelIds = Object.keys(LEVELS).map(Number);
+  const levelIds = Object.keys(levels).map(Number);
   for (const lvl of levelIds) {
-    const unlocked = data.unlockedLevels.includes(lvl);
+    const unlocked = od.unlockedLevels.includes(lvl);
     const bestForLevel = history.filter(h => h.level === lvl);
     const bestLvlPPM = bestForLevel.length ? Math.max(...bestForLevel.map(h => h.ppm)) : 0;
-    const mastered = bestForLevel.some(h => h.ppm >= LEVELS[lvl].goal && h.accuracy >= 95);
+    const mastered = bestForLevel.some(h => h.ppm >= levels[lvl].goal && h.accuracy >= 95);
 
     const card = document.createElement("div");
     card.className = "level-card" + (unlocked ? "" : " locked");
     card.innerHTML = `
       <div class="level-info">
-        <h3>${LEVELS[lvl].name}</h3>
-        <p>${LEVELS[lvl].label}${bestForLevel.length ? " · Best: " + bestLvlPPM + " PPM" : ""}</p>
+        <h3>${levels[lvl].name}</h3>
+        <p>${levels[lvl].label}${bestForLevel.length ? " · Best: " + bestLvlPPM + " PPM" : ""}</p>
       </div>
       <span class="level-badge ${mastered ? "badge-mastered" : unlocked ? "badge-unlocked" : "badge-locked"}">
         ${mastered ? "★ Mastered" : unlocked ? "Play" : "Locked"}
@@ -642,7 +811,8 @@ function renderHome() {
 function renderNeedsWork() {
   const container = document.getElementById("needs-work");
   const list = document.getElementById("needs-work-list");
-  const stats = data.factStats || {};
+  const stats = opData().factStats || {};
+  const op = data.currentOp;
 
   // Only include facts with enough attempts
   const entries = Object.entries(stats)
@@ -659,7 +829,7 @@ function renderNeedsWork() {
   const avgTimes = entries.filter(e => e.avg !== null).map(e => e.avg);
   const avgOfAvgs = avgTimes.length ? avgTimes.reduce((s, t) => s + t, 0) / avgTimes.length : 1;
   const scored = entries.map(e => {
-    const speedRatio = e.avg !== null ? (e.avg / avgOfAvgs) : 10; // null avg = never correct = very high
+    const speedRatio = e.avg !== null ? (e.avg / avgOfAvgs) : 10;
     return { ...e, trouble: (1 - e.accuracy) * 5 + speedRatio };
   }).sort((a, b) => b.trouble - a.trouble).slice(0, 8);
 
@@ -674,7 +844,8 @@ function renderNeedsWork() {
 
   container.style.display = "block";
   list.innerHTML = needsWork.map(e => {
-    const parts = [`<span class="nw-fact">${e.a} × ${e.b}</span>`];
+    const prob = makeProblem(op, e.a, e.b);
+    const parts = [`<span class="nw-fact">${prob.a} ${opSymbol()} ${prob.b}</span>`];
     if (e.avg !== null) parts.push(`<span class="nw-time">avg ${e.avg.toFixed(1)}s</span>`);
     if (e.accuracy < 0.9) parts.push(`<span class="nw-acc">${Math.round(e.accuracy * 100)}% right</span>`);
     return `<div class="needs-work-item">${parts.join(" ")}</div>`;
@@ -686,7 +857,7 @@ let lastNeedsWork = [];
 function startPracticeDrill() {
   if (!lastNeedsWork.length) return;
   startRetrievalWithFacts(
-    lastNeedsWork.map(e => ({ a: e.a, b: e.b, answer: e.a * e.b })),
+    lastNeedsWork.map(e => makeProblem(data.currentOp, e.a, e.b)),
     true
   );
 }
@@ -696,8 +867,9 @@ function localDateStr(d) {
 }
 
 function calcStreak() {
-  if (!data.history.length) return 0;
-  const dates = [...new Set(data.history.map(h => h.date))].sort().reverse();
+  const history = opData().history;
+  if (!history.length) return 0;
+  const dates = [...new Set(history.map(h => h.date))].sort().reverse();
   let streak = 0;
   const today = new Date();
 
@@ -715,7 +887,8 @@ function calcStreak() {
 
 function renderChart() {
   const area = document.getElementById("chart-area");
-  const recent = data.history.slice(-15);
+  const levels = getLevels();
+  const recent = opData().history.slice(-15);
 
   if (!recent.length) {
     area.innerHTML = '<div class="chart-empty">Complete a drill to see your progress!</div>';
@@ -723,12 +896,12 @@ function renderChart() {
   }
 
   const chartH = 120;
-  const maxGoal = Math.max(...recent.map(h => LEVELS[h.level] ? LEVELS[h.level].goal : GOAL_PPM));
+  const maxGoal = Math.max(...recent.map(h => levels[h.level] ? levels[h.level].goal : 40));
   const maxPPM = Math.max(maxGoal + 5, ...recent.map(h => h.ppm));
 
   let barsHTML = recent.map(h => {
     const barH = Math.max(2, Math.round((h.ppm / maxPPM) * chartH));
-    const levelGoal = LEVELS[h.level] ? LEVELS[h.level].goal : GOAL_PPM;
+    const levelGoal = levels[h.level] ? levels[h.level].goal : 40;
     const atGoal = h.ppm >= levelGoal;
     return `
       <div class="chart-bar-wrap" title="Level ${h.level}: ${h.ppm} PPM (goal: ${levelGoal})">
@@ -760,7 +933,8 @@ function startDrill(level) {
   if (drillTimer) { clearInterval(drillTimer); drillTimer = null; }
 
   currentLevel = level;
-  drillProblems = generateProblems(level);
+  const levels = getLevels();
+  drillProblems = generateProblems(level, data.currentOp);
   drillIndex = 0;
   drillCorrect = 0;
   drillTotal = 0;
@@ -770,13 +944,13 @@ function startDrill(level) {
   practiceMode = false;
   lastShownProblem = null;
 
-  const drillSeconds = LEVELS[level].seconds || DRILL_SECONDS;
+  const drillSeconds = levels[level].seconds || DRILL_SECONDS;
   showScreen("drill-screen");
   updateTimerDisplay(drillSeconds);
   document.getElementById("score-live").textContent = "0 correct";
   document.getElementById("feedback").textContent = "";
   document.getElementById("feedback").className = "feedback";
-  document.getElementById("drill-progress").textContent = `${LEVELS[level].name}: ${LEVELS[level].label}`;
+  document.getElementById("drill-progress").textContent = `${levels[level].name}: ${levels[level].label}`;
   document.getElementById("problem-display").textContent = "";
   clearAnswer();
 
@@ -862,7 +1036,7 @@ function showProblem() {
   }
   const p = drillProblems[drillIndex];
   lastShownProblem = p;
-  document.getElementById("problem-display").textContent = `${p.a} × ${p.b}`;
+  document.getElementById("problem-display").textContent = `${p.a} ${opSymbol()} ${p.b}`;
   problemStartTime = performance.now();
 }
 
@@ -912,13 +1086,15 @@ function submitAnswer() {
   if (correct) {
     drillCorrect++;
     showFeedback(true);
+    playCorrect();
   } else {
     drillMissed.push({ ...problem, userAnswer });
     showFeedback(false, problem.answer);
+    playIncorrect();
   }
 
   // Update per-fact stats
-  updateFactStats(problem.a, problem.b, correct, elapsed);
+  updateFactStats(problem.rawA, problem.rawB, correct, elapsed);
 
   document.getElementById("score-live").textContent = `${drillCorrect} correct`;
 
@@ -928,12 +1104,12 @@ function submitAnswer() {
 }
 
 function updateFactStats(a, b, correct, time) {
-  if (!data.factStats) data.factStats = {};
+  const fs = opData().factStats;
   const key = `${a}x${b}`;
-  let stat = data.factStats[key];
+  let stat = fs[key];
   if (!stat) {
     stat = { avg: null, count: 0, correct: 0 };
-    data.factStats[key] = stat;
+    fs[key] = stat;
   }
   stat.count++;
   if (correct) {
@@ -967,14 +1143,14 @@ function endDrill() {
   drillActive = false;
   clearInterval(drillTimer);
 
-  const drillSeconds = LEVELS[currentLevel].seconds || DRILL_SECONDS;
+  const levels = getLevels();
+  const drillSeconds = levels[currentLevel].seconds || DRILL_SECONDS;
   const ppm = Math.round(drillCorrect * (60 / drillSeconds));
   const accuracy = drillTotal > 0 ? Math.round((drillCorrect / drillTotal) * 100) : 0;
 
   let newUnlock = false;
 
   if (!practiceMode) {
-    // Save result to history (not for practice drills)
     const result = {
       date: localDateStr(new Date()),
       level: currentLevel,
@@ -983,15 +1159,14 @@ function endDrill() {
       ppm,
       accuracy,
     };
-    data.history.push(result);
+    opData().history.push(result);
 
-    // Check level unlock
-    const maxLevel = Math.max(...Object.keys(LEVELS).map(Number));
-    const levelGoal = LEVELS[currentLevel].goal;
+    const maxLevel = Math.max(...Object.keys(levels).map(Number));
+    const levelGoal = levels[currentLevel].goal;
     if (ppm >= levelGoal && accuracy >= 95 && currentLevel < maxLevel) {
       const nextLevel = currentLevel + 1;
-      if (!data.unlockedLevels.includes(nextLevel)) {
-        data.unlockedLevels.push(nextLevel);
+      if (!opData().unlockedLevels.includes(nextLevel)) {
+        opData().unlockedLevels.push(nextLevel);
         newUnlock = true;
       }
     }
@@ -1002,6 +1177,7 @@ function endDrill() {
   // Brief delay before showing results so stray taps don't hit result buttons
   document.getElementById("feedback").textContent = "Time's up!";
   document.getElementById("feedback").className = "feedback correct";
+  playTimesUp();
   setTimeout(() => {
     showResults(ppm, drillCorrect, drillTotal - drillCorrect, accuracy, newUnlock);
   }, 600);
@@ -1012,7 +1188,7 @@ function showResults(ppm, correct, incorrect, accuracy, newUnlock) {
 
   const ppmEl = document.getElementById("results-ppm");
   ppmEl.textContent = ppm;
-  const levelGoal = LEVELS[currentLevel].goal;
+  const levelGoal = getLevels()[currentLevel].goal;
   ppmEl.classList.toggle("goal-met", ppm >= levelGoal);
 
   document.getElementById("results-correct").textContent = correct;
@@ -1031,6 +1207,7 @@ function showResults(ppm, correct, incorrect, accuracy, newUnlock) {
     milestoneArea.innerHTML = `<div class="milestone-msg">Practice session — keep drilling those weak spots!</div>`;
   } else if (newUnlock) {
     milestoneArea.innerHTML = `<div class="milestone-msg">Level ${currentLevel + 1} Unlocked! Keep it up!</div>`;
+    playComplete();
   } else if (ppm >= levelGoal && accuracy < 95) {
     milestoneArea.innerHTML = `<div class="milestone-msg">Speed is there! Need 95% accuracy to unlock next level (got ${accuracy}%)</div>`;
   } else if (ppm >= levelGoal) {
@@ -1049,7 +1226,7 @@ function showResults(ppm, correct, incorrect, accuracy, newUnlock) {
     if (slow.length > 0) {
       slowSection.style.display = "block";
       slowList.innerHTML = slow.map(r =>
-        `<div class="slow-item"><span>${r.a} × ${r.b}</span> <span class="slow-time">${r.time.toFixed(1)}s</span></div>`
+        `<div class="slow-item"><span>${r.a} ${opSymbol()} ${r.b}</span> <span class="slow-time">${r.time.toFixed(1)}s</span></div>`
       ).join("");
     } else {
       slowSection.style.display = "none";
@@ -1071,7 +1248,7 @@ function showResults(ppm, correct, incorrect, accuracy, newUnlock) {
   if (uniqueMissed.length > 0) {
     missedSection.style.display = "block";
     missedList.innerHTML = uniqueMissed.map(m =>
-      `<div class="missed-item">${m.a} × ${m.b} = <span class="correct-answer">${m.answer}</span></div>`
+      `<div class="missed-item">${m.a} ${opSymbol()} ${m.b} = <span class="correct-answer">${m.answer}</span></div>`
     ).join("");
   } else {
     missedSection.style.display = "none";
@@ -1095,13 +1272,16 @@ let retrievalTransitioning = false;
 
 function renderRetrievalTabs() {
   const tabs = document.getElementById("retrieval-tabs");
-  const allMults = [2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13];
+  const op = data.currentOp;
+  const allMults = OPS[op].retrievalTabs;
+  const prefix = OPS[op].tabPrefix;
 
   if (!retrievalMultiplier || !allMults.includes(retrievalMultiplier)) retrievalMultiplier = allMults[0];
 
-  tabs.innerHTML = allMults.map(m =>
-    `<button class="study-tab ${m === retrievalMultiplier ? "active" : ""}" onclick="selectRetrievalTab(${m})">${m}s</button>`
-  ).join("");
+  tabs.innerHTML = allMults.map(m => {
+    const label = prefix ? `${prefix}${m}` : `${m}s`;
+    return `<button class="study-tab ${m === retrievalMultiplier ? "active" : ""}" onclick="selectRetrievalTab(${m})">${label}</button>`;
+  }).join("");
 
   // Reset to start state when navigating to screen
   document.getElementById("retrieval-start-area").style.display = "";
@@ -1118,11 +1298,14 @@ function selectRetrievalTab(m) {
 
 function startRetrieval() {
   if (retrievalActive) return;
-  const factors = retrievalMultiplier >= 10
-    ? Array.from({length: retrievalMultiplier - 1}, (_, i) => i + 2)
-    : FACTORS;
+  const op = data.currentOp;
+  const factors = (op === 'multiply' || op === 'divide')
+    ? (retrievalMultiplier >= 10
+      ? Array.from({length: retrievalMultiplier - 1}, (_, i) => i + 2)
+      : [2, 3, 4, 5, 6, 7, 8, 9])
+    : [1, 2, 3, 4, 5, 6, 7, 8, 9, 10];
 
-  const facts = factors.map(b => ({ a: retrievalMultiplier, b, answer: retrievalMultiplier * b }));
+  const facts = factors.map(b => makeProblem(op, retrievalMultiplier, b));
   startRetrievalWithFacts(facts, false);
 }
 
@@ -1154,7 +1337,7 @@ function startRetrievalWithFacts(facts, isWeakFacts) {
 
 function showRetrievalProblem() {
   const fact = retrievalFacts[retrievalIndex];
-  document.getElementById("retrieval-problem").textContent = `${fact.a} × ${fact.b}`;
+  document.getElementById("retrieval-problem").textContent = `${fact.a} ${opSymbol()} ${fact.b}`;
   retrievalBuffer = "";
   updateRetrievalAnswerDisplay();
 
@@ -1215,6 +1398,7 @@ function submitRetrievalAnswer() {
       retrievalCorrectAnswer = null;
       fb.textContent = "Got it!";
       fb.className = "feedback correct";
+      playCorrect();
       retrievalTransitioning = true;
       setTimeout(() => {
         retrievalTransitioning = false;
@@ -1236,6 +1420,7 @@ function submitRetrievalAnswer() {
   if (correct) {
     fb.textContent = "Correct!";
     fb.className = "feedback correct";
+    playCorrect();
     retrievalTransitioning = true;
     setTimeout(() => {
       retrievalTransitioning = false;
@@ -1245,6 +1430,7 @@ function submitRetrievalAnswer() {
     retrievalMistakesThisPass++;
     fb.textContent = `Nope — ${fact.answer}. Type it!`;
     fb.className = "feedback incorrect";
+    playIncorrect();
     retrievalWaitingForCorrection = true;
     retrievalCorrectAnswer = fact.answer;
     retrievalBuffer = "";
@@ -1272,6 +1458,7 @@ function advanceRetrieval() {
 
 function completeRetrieval() {
   retrievalActive = false;
+  playComplete();
   saveData();
 
   document.getElementById("retrieval-active").style.display = "none";
@@ -1345,17 +1532,21 @@ document.addEventListener("keydown", (e) => {
 // ──────────────────────────────────────────
 // Sync unlocks from history (handles rule changes and migrations)
 function syncUnlocks() {
-  const maxLevel = Math.max(...Object.keys(LEVELS).map(Number));
   let changed = false;
-  for (let lvl = 1; lvl < maxLevel; lvl++) {
-    const nextLevel = lvl + 1;
-    if (data.unlockedLevels.includes(nextLevel)) continue;
-    const passed = data.history.some(h =>
-      h.level === lvl && h.ppm >= LEVELS[lvl].goal && h.accuracy >= 95
-    );
-    if (passed) {
-      data.unlockedLevels.push(nextLevel);
-      changed = true;
+  for (const op of ['multiply', 'divide', 'add', 'subtract']) {
+    const levels = getLevels(op);
+    const od = opData(op);
+    const maxLevel = Math.max(...Object.keys(levels).map(Number));
+    for (let lvl = 1; lvl < maxLevel; lvl++) {
+      const nextLevel = lvl + 1;
+      if (od.unlockedLevels.includes(nextLevel)) continue;
+      const passed = od.history.some(h =>
+        h.level === lvl && h.ppm >= levels[lvl].goal && h.accuracy >= 95
+      );
+      if (passed) {
+        od.unlockedLevels.push(nextLevel);
+        changed = true;
+      }
     }
   }
   if (changed) saveData();
