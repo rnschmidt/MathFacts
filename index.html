@@ -468,7 +468,7 @@ h1 { font-size: 1.6rem; margin-bottom: 4px; text-align: center; }
 
   <!-- Active retrieval area (hidden until started) -->
   <div id="retrieval-active" style="display:none;">
-    <div class="retrieval-progress" id="retrieval-progress">Pass 1: In Order — Fact 1 of 8</div>
+    <div class="retrieval-progress" id="retrieval-progress">Pass 1: Shuffled — Fact 1 of 8</div>
     <div class="problem-display" id="retrieval-problem">—</div>
     <div class="answer-display" id="retrieval-answer"></div>
     <div class="feedback" id="retrieval-feedback"></div>
@@ -1305,7 +1305,7 @@ function startRetrieval() {
       : [2, 3, 4, 5, 6, 7, 8, 9])
     : [1, 2, 3, 4, 5, 6, 7, 8, 9, 10];
 
-  const facts = factors.map(b => makeProblem(op, retrievalMultiplier, b));
+  const facts = shuffle(factors.map(b => makeProblem(op, retrievalMultiplier, b)));
   startRetrievalWithFacts(facts, false);
 }
 
@@ -1343,7 +1343,7 @@ function showRetrievalProblem() {
 
   const passLabel = retrievalIsWeakFacts
     ? `Pass ${retrievalPass}`
-    : (retrievalPass === 1 ? "Pass 1: In Order" : `Pass ${retrievalPass}: Shuffled`);
+    : `Pass ${retrievalPass}: Shuffled`;
   document.getElementById("retrieval-progress").textContent =
     `${passLabel} — Fact ${retrievalIndex + 1} of ${retrievalFacts.length}`;
 
