@@ -1447,9 +1447,13 @@ function advanceRetrieval() {
       completeRetrieval();
       return;
     }
-    // Start next pass (shuffled)
+    // Start next pass (shuffled), avoid repeating the last fact
+    const lastFact = retrievalFacts[retrievalFacts.length - 1];
     retrievalPass++;
     retrievalFacts = shuffle(retrievalFacts);
+    if (retrievalFacts.length > 1 && retrievalFacts[0].a === lastFact.a && retrievalFacts[0].b === lastFact.b) {
+      retrievalFacts.push(retrievalFacts.shift());
+    }
     retrievalIndex = 0;
     retrievalMistakesThisPass = 0;
   }
