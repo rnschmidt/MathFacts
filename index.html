@@ -999,8 +999,12 @@ function endDrill() {
 
   saveData();
 
-  // Show results
-  showResults(ppm, drillCorrect, drillTotal - drillCorrect, accuracy, newUnlock);
+  // Brief delay before showing results so stray taps don't hit result buttons
+  document.getElementById("feedback").textContent = "Time's up!";
+  document.getElementById("feedback").className = "feedback correct";
+  setTimeout(() => {
+    showResults(ppm, drillCorrect, drillTotal - drillCorrect, accuracy, newUnlock);
+  }, 600);
 }
 
 function showResults(ppm, correct, incorrect, accuracy, newUnlock) {
