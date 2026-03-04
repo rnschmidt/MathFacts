@@ -449,7 +449,7 @@ h1 { font-size: 1.6rem; margin-bottom: 4px; text-align: center; }
   </div>
 
   <button class="btn btn-blue" id="results-retry">Try Again</button>
-  <button class="btn btn-outline" onclick="showScreen('home-screen')">Back to Home</button>
+  <button class="btn btn-outline" id="results-home" onclick="showScreen('home-screen')">Back to Home</button>
 </div>
 
 <!-- ════════════ RETRIEVAL SCREEN ════════════ -->
@@ -1251,10 +1251,14 @@ function showResults(ppm, correct, incorrect, accuracy, newUnlock) {
   document.getElementById("results-incorrect").textContent = incorrect;
   document.getElementById("results-accuracy").textContent = accuracy + "%";
 
-  // Wire retry button
+  // Wire retry button — disable briefly to prevent stray taps from the drill
   const retryBtn = document.getElementById("results-retry");
+  const homeBtn = document.getElementById("results-home");
   retryBtn.textContent = practiceMode ? "Practice Again" : "Try Again";
   retryBtn.onclick = practiceMode ? startPracticeDrill : () => startDrill(currentLevel);
+  retryBtn.disabled = true;
+  homeBtn.disabled = true;
+  setTimeout(() => { retryBtn.disabled = false; homeBtn.disabled = false; }, 1000);
 
   // Milestones
   const milestoneArea = document.getElementById("milestone-area");
